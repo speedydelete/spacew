@@ -1,28 +1,66 @@
 
+from typing import Any
+
 from const import *
 
-def main(output):
-    out = []
-    mode = output['mode']
-    data = output['data']
-    out.append('\x1b[96mdate       R S G kp ')
-    out.append('ap  ' if mode >= MORE else '')
-    out.append('sunspots +ars flux ' if mode >= LESS else 'sunspots')
-    out.append('C    M    X    00 03 06 09 12 15 18 21 ' if mode >= DEFAULT else 'flares')
-    out.append('\x1b[0m\n')
-    for day, info in data.items():
-        kp = INT_TO_KP_MAP[round(sum(KP_TO_INT_MAP[x] for x in info['kp'])/len(info['kp']))]
-        out.append(f'\x1b[{KP_COLOR_MAP[kp]}m{day} 9 9 {int(kp[:1]) - 4 if int(kp[:1]) >= 5 else 0:<1} {kp:<2} ')
-        if mode >= MORE:
-            out.append(f'{round(sum(info['ap'])/len(info['ap'])):<3} ')
-        out.append(f'{info['spots']:<8} ')
-        out.append(f'{info['new_regions']:<4} {info['flux']:<4} ' if mode >= LESS else '')
-        if mode >= DEFAULT:
-            out.append(f'{info['c_flares']:<4} {info['m_flares']:<4} {info['x_flares']:<4} ')
-            out.append(' '.join(f'\x1b[{KP_COLOR_MAP[x]}m{x:<2}' for x in info['kp']))
+def color(value: Any, map_name: str, width: int | None = None, display: bool = True, reset: bool = True) -> str:
+    after = ''
+    if display:
+        if width is not None:
+            after = f'{str(value).ljust(width)}'
         else:
-            out.append(f'({(info['c_flares'] + info['m_flares'] + info['x_flares'])/3:<6} ')
-        out.append('\x1b[0m\n')
-    out = ''.join(out).split('\n')
-    out = [line for line in out if line != '']
-    return '\n'.join(out)
+            after = f'{value}'
+        if reset:
+            after += '\x1b[0m'
+    return f'\x1b[{COLOR[map_name](value)}m{after}'
+
+def main(output):
+    out = ''
+    mode = output.mode
+    data = output.data
+    out += '\x1b[96mdate       '
+    if mode & EARTH:
+        out += 'kp -  +  R-+ S-+ G-+ '
+        if mode & AP:
+            out += 'ap  -   +   '
+        if mode & HOUR:
+            out += '00 03 06 09 12 15 18 21 '.replace(' ', (' ap  ' if mode & AP else ' '))
+    if mode & SUN:
+        out += 'f10.7 spots area   +ars bgflux mxflux C  M  X  '
+        if mode & FLARES:
+            out += 'flares '
+    out += '\x1b[0m\n'
+    for day, info in data.items():
+        int_kps = tuple(KP_TO_INT[x] for x in info.kps)
+        kp = INT_TO_KP[round(sum(int_kps)/len(int_kps))]
+        out += f'{color(kp, KP, display=False)}{day.strftime('%x'):<10} '
+        if mode & EARTH:
+            min_kp = INT_TO_KP[min(int_kps)]
+            max_kp = INT_TO_KP[max(int_kps)]
+            out += f'{color(kp, KP, 2)} {color(min_kp, KP, 2)} {color(max_kp, KP, 2)} '
+            out += f'9{color(flare_to_r(info.bgflux), RSG, 1)}{color(flare_to_r(info.mxflux), RSG, 1)} '
+            out += f'{color(pfu_to_s(info.p10), RSG, 1)}99 '
+            out += f'{color(KP_TO_G[kp], RSG, 1)}{color(KP_TO_G[min_kp], RSG, 1)}{color(KP_TO_G[max_kp], RSG, 1)} '
+            if mode & AP:
+                ap = round(sum(info.aps)/len(info.aps))
+                min_ap = min(info.aps)
+                max_ap = max(info.aps)
+                out += f'{color(ap, AP, 3)}{color(min_ap, AP, 3)}{color(max_ap, AP, 3)}'
+            if mode & HOUR:
+                if mode & AP:
+                    for h_kp, h_ap in zip(info.kps, info.aps):
+                        out += f'{color(h_kp, KP, 2)} {h_ap:<3} '
+                else:
+                    for h_kp in info.kps:
+                        out += f'{color(h_kp, KP, 2)} '
+        if mode & SUN:
+            out += f'{color(info.f107, SFU, 5)} {color(info.spots, SPOTS, 5)} '
+            out += f'{color(info.area, AREA, 6)} {color(info.nars, NARS, 4)} '
+            out += f'{color(info.bgflux, FLARE, 6)} {color(info.mxflux, FLARE, 6)} '
+            out += f'{color(info.cfs, C_FLARE_COUNT, 2)} '
+            out += f'{color(info.mfs, M_FLARE_COUNT, 2)} '
+            out += f'{color(info.xfs, X_FLARE_COUNT, 2)} '
+            if mode & FLARES:
+                pass
+        out += '\n'
+    return out

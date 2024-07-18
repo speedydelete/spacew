@@ -45,7 +45,7 @@ def get_kp_ap_data(start: date, end: date, refresh: bool = False) -> dict[str, d
     if end <= today + timedelta(days=3):
         if os.path.exists('.spacew_cache'):
             with open('.spacew_cache', 'rb') as file:
-                cache_time, data, preds, _ = pickle.loads(file.read())
+                cache_time, data, preds, _, _ = pickle.loads(file.read())
             if time() - cache_time > 3600:
                 refresh = True
         else:
@@ -58,7 +58,7 @@ def get_kp_ap_data(start: date, end: date, refresh: bool = False) -> dict[str, d
             preds = [[y for y in x if y != ''] for x in preds]
             preds = [[preds[j][i] for j in range(8)] for i in range(3)]
             with open('.spacew_cache', 'wb+') as file:
-                file.write(pickle.dumps([time(), data, preds, None]))
+                file.write(pickle.dumps([time(), data, preds, None, None]))
         data = load_txt_data(data, start, end, GFZ_FIRST_DATE if (today - start).days < 28 else None, mul=8)
         for i, line in enumerate(data):
             if line[7] == '-1.000':
@@ -67,17 +67,17 @@ def get_kp_ap_data(start: date, end: date, refresh: bool = False) -> dict[str, d
             for hour in day:
                 dd = today + timedelta(days=i)
                 data.append((str(dd.year).zfill(4), str(dd.month).zfill(2), str(dd.day).zfill(2), \
-                            0, 0, 0, 0, hour, KP_TO_AP_MAP[KP_VALUE_MAP[hour]], '0'))
+                            0, 0, 0, 0, hour, KP_TO_AP[KP_VALUE[hour]], '0'))
         for i in range(len(data)//8):
             kps, aps = [], []
             for line in data[i*8:i*8+8]:
-                kps.append(KP_VALUE_MAP[line[7]])
+                kps.append(KP_VALUE[line[7]])
                 aps.append(int(line[8]))
-            key = '-'.join(data[i*8][:3])
-            out[key] = {
-                'kp': tuple(kps),
-                'ap': tuple(aps),
-            }
+            key = date.fromisoformat('-'.join(data[i*8][:3]))
+            out[key] = Namespace(
+                kps = tuple(kps),
+                aps = tuple(aps),
+            )
     return out
 
 
@@ -88,25 +88,60 @@ def get_solar_data(start: date, end: date, refresh: bool = False):
         data = get_swpc_ftp_file(f'pub/warehouse/{start.year}/{start.year}_DSD.txt')
         data = load_txt_data(data, start, end, date(start.year, 1, 1))
         for line in data:
-            out['-'.join(line[:3])] = {
-                'flux': int(line[4]),
-                'spots': int(line[5]),
-                'spotarea': int(line[6]),
-                'new_regions': int(line[7]),
-                'c_flares': int(line[10]),
-                'm_flares': int(line[11]),
-                'x_flares': int(line[12]),
-            }
-    elif end.year == date.today().year:
+            key = date.fromisoformat('-'.join(line[:3]))
+            out[key] = Namespace(
+                f107 = int(line[3]),
+                spots = int(line[4]),
+                area = int(line[5]),
+                nars = int(line[6]),
+                bgflux = str(line[8]),
+                mxflux = 'X99.99',
+                cfs = int(line[9]),
+                mfs = int(line[10]),
+                xfs = int(line[11]),
+            )
+    elif end <= date.today():
         for day in range((end - start).days):
-            out[str(start + timedelta(days=day))] = {
-                'flux': '-999',
-                'spots': '-999',
-                'new_regions': '-999',
-                'c_flares': '-999',
-                'm_flares': '-999',
-                'x_flares': '-999',
-            }
+            out[start + timedelta(days=day)] = Namespace(
+                f107 = 9999,
+                spots = 99999,
+                nars = 9999,
+                area = 9999,
+                bgflux = 'X99.99',
+                mxflux = 'X99.99',
+                cfs = 99,
+                mfs = 99,
+                xfs = 99,
+            )
+    else:
+        pass
+    return out
+
+
+def get_goes_data(start: date, end: date, refresh: bool = False):
+    '''gets GOES data for date(s)'''
+    out = {}
+    if end < GOES14_END_DATE:
+        data = get_swpc_ftp_file(f'pub/warehouse/{start.year}/{start.year}_DPD.txt')
+        data = load_txt_data(data, start, end, date(start.year, 1, 1))
+        for line in data:
+            key = date.fromisoformat('-'.join(line[:3]))
+            out[key] = Namespace(
+                p1 = float(line[3])/86400,
+                p10 = float(line[4])/86400,
+                p100 = float(line[5])/86400,
+                e08 = float(line[6])/86400,
+                e2 = float(line[7])/86400,
+            )
+    elif end <= date.today():
+        for day in range((end - start).days):
+            out[start + timedelta(days=day)] = Namespace(
+                p1 = -1,
+                p10 = -1,
+                p100 = -1,
+                e08 = -1,
+                e2 = -1,
+            )
     else:
         pass
     return out
