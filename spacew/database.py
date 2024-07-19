@@ -51,14 +51,9 @@ def str_field(data: Any) -> str:
     else:
         raise ValueError(f'invalid field value: {data!r}')
 
-def parse_field(data: str, dtype: str | type) -> Any:
+def parse_field(data: str, dtype: type) -> Any:
     if data == '':
         return None
-    if isinstance(dtype, str):
-        try:
-            dtype = DATA_TYPES[dtype]
-        except KeyError:
-            raise DatabaseError(f'invalid data type: {dtype!r}') from None
     if dtype == bool:
         return len(data) > 0
     elif dtype == int:
@@ -112,7 +107,7 @@ class Row:
 
 class Database:
 
-    def __init__(self, filename: str, db_schema: list[type] | None = None, **metadata: Any):
+    def __init__(self, filename: str, db_schema: dict[str, type] | None = None, **metadata: Any):
         self.filename = filename
         if db_schema is None:
             try:
@@ -121,10 +116,13 @@ class Database:
             except FileNotFoundError:
                 raise ValueError('cannot create new database without schema') from None
             meta = [line.split('=') for line in data if line[0] != '#']
-            self.meta = {line[0]: '='.join(line[1]) for line in meta}
-            if 'schema' not in self.meta:
-                raise DatabaseError(f'database {filename!r} has no schema')
-            schema = self.meta['schema'].split(',')
+            meta = {line[0]: '='.join(line[1]) for line in meta}
+            self.meta = {k: parse_field(v, META_TYPES[k]) for k, v in meta.items()}
+            try:
+                schema = self.meta['schema'].split(',')
+                schema = [DATA_TYPES[dtype] for dtype in schema]
+            except KeyError:
+                raise DatabaseError(f'database {filename!r} has invalid or no schema') from None
             self.fntype, self.schema = schema[0], schema[1:]
             data = [tuple(RE_COMMA.split(line)) for line in data]
             self.fields = data[0][1:]
@@ -133,7 +131,8 @@ class Database:
         else:
             if os.path.exists(self.filename):
                 raise DatabaseError(f'database already exists: \'{self.filename}\'')
-            self.schema = db_schema
+            self.fields = tuple(db_schema.keys())
+            self.schema = tuple(db_schema.values())
             self.meta = metadata
 
     def __getitem__(self, item: str | int) -> Row:
