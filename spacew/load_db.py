@@ -7,6 +7,7 @@ def db_exists():
     return os.path.exists('data.sdb')
 
 def create_db():
-    Database('data.sdb', {
+    db = Database('data.sdb', {
         'spots': int,
-    }, date).save()
+    }, date)
+    db.save()

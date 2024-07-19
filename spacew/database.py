@@ -73,7 +73,7 @@ def parse_field(data: str, dtype: type) -> Any:
 class Row:
 
     def __init__(self, db: Database, name: str, fields: dict[str, Any]) -> None:
-        self.db = db
+        self._db = db
         self.name = name
         self._fields = fields
 
@@ -84,7 +84,9 @@ class Row:
             raise AttributeError(f'attribute not found: \'{attr}\'')
 
     def __setattr__(self, attr: str, value: Any) -> None:
-        if attr in self._fields:
+        if attr.startswith('_') or attr == 'name':
+            self.__dict__[attr] = value
+        elif attr in self._fields:
             self._fields[attr] = value
         else:
             self.__dict__[attr] = value
@@ -102,7 +104,7 @@ class Row:
             raise KeyError(f'field not found: \'{item}\'')
 
     def save(self):
-        self.db[self.name] = self
+        self._db[self.name] = self
 
 
 class Database:
@@ -140,6 +142,7 @@ class Database:
             metadata['schema'] = ','.join([dtype.__name__ for dtype in self.schema])
             self.meta = metadata
             self.data = []
+            self.names = []
 
     def __getitem__(self, item: str | int) -> Row:
         if isinstance(item, str):
@@ -151,13 +154,19 @@ class Database:
         except KeyError:
             raise ValueError(f'item {item!r} not in database') from None
 
-    def __setitem__(self, item: str | int, value: Row) -> None:
-        if isinstance(item, str):
+    def __setitem__(self, item: Any, value: Row) -> None:
+        if not isinstance(item, int):
+            item = str_field(item)
             item = self.names.index(item)
-        self.data[item] = tuple(str_field(field) for field in value._fields.values())
+        self.data[item] = (str_field(value.name),) + tuple(str_field(field) for field in value._fields.values())
 
-    def new_row(self, name):
+    def new_row(self, name: Any):
+        dname = str_field(name)
+        self.data.append((dname,) + (None,) * len(self.fields))
+        self.names.append(dname)
         return Row(self, name, {field: None for field in self.fields})
+
+    add_row = new_row
 
     def save(self):
         data = '\n'.join([','.join(row) for row in self.data])
