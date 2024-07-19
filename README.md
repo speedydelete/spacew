@@ -1,6 +1,6 @@
 Space weather prediction program, using AI. (Doesn't actually predict yet, I'll add that soon)
 
-Python 3.10+ only.
+Python 3.12+ only.
 
 You have to install all the requirements in requirements.txt.
 
