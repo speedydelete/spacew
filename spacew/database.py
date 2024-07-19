@@ -21,6 +21,9 @@ BASE_DTYPE = r'bool|int|float|complex|str|date|time|datetime'
 RE_DTYPE = re.compile('bool|')
 
 
+class strlist(list):
+    pass
+
 DATA_TYPES: dict[str, type] = {
     'bool': bool,
     'int': int,
@@ -30,6 +33,7 @@ DATA_TYPES: dict[str, type] = {
     'date': date,
     'time': time,
     'datetime': datetime,
+    'strlist': strlist,
 }
 
 with open('meta_types.json', 'r', encoding='utf-8') as meta_types:
@@ -48,6 +52,11 @@ def str_field(data: Any) -> str:
         return data.replace('\\', '\\\\').replace(',', '\\,')
     elif isinstance(data, date | time | datetime):
         return str(data)
+    elif isinstance(data, list):
+        try:
+            return ','.join([item.replace('\\', '\\\\').replace(',', '\\,') for item in data])
+        except AttributeError:
+            raise ValueError('fields that are lists must be strlists') from None
     else:
         raise ValueError(f'invalid field value: {data!r}')
 
@@ -67,8 +76,11 @@ def parse_field(data: str, dtype: type) -> Any:
         return data.replace('\\,', ',').replace('\\\\', '\\')
     elif dtype in (date, time, datetime):
         return dtype.fromisoformat(data)
+    elif dtype == strlist:
+        return [item.replace('\\,', ',').replace('\\\\', '\\') for item in RE_COMMA.split(data)]
     else:
         raise ValueError(f'invalid data type: {dtype!r}')
+
 
 class Row:
 
@@ -122,7 +134,7 @@ class Database:
             meta = {line[0]: '='.join(line[1]) for line in meta}
             self.meta = {k: parse_field(v, META_TYPES[k]) for k, v in meta.items()}
             try:
-                schema = self.meta['schema'].split(',')
+                schema = self.meta['schema']
                 schema = [DATA_TYPES[dtype] for dtype in schema]
             except KeyError:
                 raise DatabaseError(f'database {filename!r} has invalid or no schema') from None

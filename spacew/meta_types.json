@@ -1,3 +1,12 @@
 {
-    "last_modified": "int"
+    "schema": "strlist",
+    "desc": "str",
+    "created": "datetime",
+    "created_by": "str",
+    "created_by_ip": "str",
+    "contributors": "strlist",
+    "last_modified": "datetime",
+    "last_modified_by": "str",
+    "last_modified_ip": "str",
+    "sources": "strlist"
 }
