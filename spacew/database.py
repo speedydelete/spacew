@@ -107,14 +107,15 @@ class Row:
 
 class Database:
 
-    def __init__(self, filename: str, db_schema: dict[str, type] | None = None, **metadata: Any):
+    def __init__(self, filename: str, db_schema: dict[str, type] | None = None, \
+                 fntype: type | None = None, **metadata: Any):
         self.filename = filename
         if db_schema is None:
             try:
                 with open(self.filename, 'r', encoding='utf-8') as file:
                     data = file.readlines()
             except FileNotFoundError:
-                raise ValueError('cannot create new database without schema') from None
+                raise ValueError('schema required for creating new database') from None
             meta = [line.split('=') for line in data if line[0] != '#']
             meta = {line[0]: '='.join(line[1]) for line in meta}
             self.meta = {k: parse_field(v, META_TYPES[k]) for k, v in meta.items()}
@@ -133,7 +134,12 @@ class Database:
                 raise DatabaseError(f'database already exists: \'{self.filename}\'')
             self.fields = tuple(db_schema.keys())
             self.schema = tuple(db_schema.values())
+            if fntype is None:
+                raise TypeError('fntype required for creating new database')
+            self.fntype = fntype
+            metadata['schema'] = ','.join([dtype.__name__ for dtype in self.schema])
             self.meta = metadata
+            self.data = []
 
     def __getitem__(self, item: str | int) -> Row:
         if isinstance(item, str):
@@ -155,7 +161,7 @@ class Database:
 
     def save(self):
         data = '\n'.join([','.join(row) for row in self.data])
-        data = str(self.fntype) + ',' + ','.join(self.fields) + '\n' + data
+        data = 'name,' + ','.join(self.fields) + '\n' + data
         for k, v in self.meta.items():
             data = f'#{k}={v}\n' + data
         with open(self.filename, 'w', encoding='utf-8') as file:

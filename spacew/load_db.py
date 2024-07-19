@@ -1,5 +1,6 @@
 
 import os
+from datetime import date
 from database import Database
 
 def db_exists():
@@ -8,4 +9,4 @@ def db_exists():
 def create_db():
     Database('data.sdb', {
         'spots': int,
-    })
+    }, date).save()
