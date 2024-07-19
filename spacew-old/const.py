@@ -7,6 +7,7 @@ import re
 import math
 from datetime import date
 
+__all__ = ['SpaceWError', 'Namespace']
 
 class SpaceWError(Exception):
     pass
