@@ -21,15 +21,13 @@ def get_swpc_ftp_file(file: str, encoding='utf-8') -> str:
 
 def load_txt_data(data: str | None, start: date, end: date, first: date | None, mul: int = 1) -> list[list[str]]:
     '''loads data in the .txt format used by api's'''
-    data = [line for line in data.split('\n') if len(line) > 0 and not line[0] in ('#', ':')]
-    data += [''] * mul
+    lines = [line for line in data.split('\n') if len(line) > 0 and not line[0] in ('#', ':')]
+    lines += [''] * mul
     if first is None:
-        first = date.fromisoformat('-'.join(data[0].split(' ')[:3]))
-    start = (start - first).days
-    end = (end - first).days
-    data = data[start * mul:end * mul]
+        first = date.fromisoformat('-'.join(lines[0].split(' ')[:3]))
+    info = lines[(start - first).days * mul:(end - first).days * mul]
     out = []
-    for line in data:
+    for line in info:
         line = line.split(' ')
         line = [x for x in line if x != '']
         out.append(line)
