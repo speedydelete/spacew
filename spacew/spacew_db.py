@@ -6,7 +6,7 @@ from database import Database, strlist, intlist, timelist
 
 
 def create_db(name):
-    db = Database(f'~/.spacew/{name}', {
+    db = Database(f'~/.spacew/{name}.sdb', {
         'spots': int,
         'f107': int,
         'new_regions': int,
@@ -39,6 +39,8 @@ def create_db(name):
     }, date)
     db.save()
 
+def load_db(name):
+    return Database(f'~/.spacew/{name}.sdb')
 
 def init_db():
     if not os.path.exists('~/.spacew'):
