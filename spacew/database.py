@@ -9,7 +9,7 @@ import os
 from datetime import datetime, date, time
 
 
-__all__ = ['Row', 'Database', 'strlist', 'intlist']
+__all__ = ['Row', 'Database', 'strlist', 'intlist', 'timelist']
 
 
 class DatabaseError(Exception):
@@ -17,14 +17,26 @@ class DatabaseError(Exception):
 
 
 RE_COMMA = re.compile(r'(?<!\\),')
-BASE_DTYPE = r'bool|int|float|complex|str|date|time|datetime'
-RE_DTYPE = re.compile('bool|')
+RE_COLON = re.compile(r'(?<!\\):')
 
+
+def field_enc_str(text: str) -> str:
+    text = text.replace('\\', '\\\\')
+    text = text.replace(',', '\\,')
+    text = text.replace(':', '\\:')
+    return text
+
+def field_dec_str(text: str) -> str:
+    text = RE_COLON.sub(':', text)
+    text = RE_COMMA.sub(',', text)
+    text = text.replace('\\\\', '\\')
+    return text
 
 class strlist(list):
     pass
-
 class intlist(list):
+    pass
+class timelist(list):
     pass
 
 DATA_TYPES: dict[str, type] = {
@@ -37,12 +49,14 @@ DATA_TYPES: dict[str, type] = {
     'time': time,
     'datetime': datetime,
     'strlist': strlist,
+    'intlist': intlist,
+    'timelist': timelist,
 }
 
 with open('meta_types.json', 'r', encoding='utf-8') as meta_types:
     META_TYPES = json.load(meta_types)
 
-def str_field(data: Any) -> str:
+def to_field(data: Any) -> str:
     if data is None:
         return ''
     if isinstance(data, bool):
@@ -52,7 +66,7 @@ def str_field(data: Any) -> str:
     elif isinstance(data, complex):
         return f'{data.real!r}+{data.imag!r}'
     elif isinstance(data, str):
-        return data.replace('\\', '\\\\').replace(',', '\\,')
+        return field_enc_str(data)
     elif isinstance(data, date | time | datetime):
         return str(data)
     elif isinstance(data, list):
@@ -66,12 +80,14 @@ def str_field(data: Any) -> str:
                 return ','.join([repr(item) for item in data])
             except AttributeError:
                 raise ValueError('not all elements in intlist are ints') from None
+        elif isinstance(data[0], time):
+            return ','.join([str(item) for item in data])
         else:
             raise ValueError(f'invalid type for list element: {type(data[0])!r}')
     else:
         raise ValueError(f'invalid field value: {data!r}')
 
-def parse_field(data: str, dtype: type) -> Any:
+def from_field(data: str, dtype: type) -> Any:
     if data == '':
         return None
     if dtype == bool:
@@ -89,6 +105,8 @@ def parse_field(data: str, dtype: type) -> Any:
         return dtype.fromisoformat(data)
     elif dtype == strlist:
         return [item.replace('\\,', ',').replace('\\\\', '\\') for item in RE_COMMA.split(data)]
+    elif dtype == intlist:
+        return [int(item) for item in RE_COMMA.split(data)]
     else:
         raise ValueError(f'invalid data type: {dtype!r}')
 
@@ -143,7 +161,7 @@ class Database:
                 raise ValueError('schema required for creating new database') from None
             meta = [line.split('=') for line in data if line[0] != '#']
             meta = {line[0]: '='.join(line[1]) for line in meta}
-            self.meta = {k: parse_field(v, META_TYPES[k]) for k, v in meta.items()}
+            self.meta = {k: from_field(v, META_TYPES[k]) for k, v in meta.items()}
             try:
                 schema = self.meta['schema']
                 schema = [DATA_TYPES[dtype] for dtype in schema]
@@ -172,19 +190,19 @@ class Database:
             item = self.names.index(item)
         try:
             row = self.data[item]
-            fields = {self.fields[i]: parse_field(field, self.schema[i]) for i, field in enumerate(row[1:])}
-            return Row(self, parse_field(row[0], self.fntype), fields)
+            fields = {self.fields[i]: from_field(field, self.schema[i]) for i, field in enumerate(row[1:])}
+            return Row(self, from_field(row[0], self.fntype), fields)
         except KeyError:
             raise ValueError(f'item {item!r} not in database') from None
 
     def __setitem__(self, item: Any, value: Row) -> None:
         if not isinstance(item, int):
-            item = str_field(item)
+            item = to_field(item)
             item = self.names.index(item)
-        self.data[item] = (str_field(value.name),) + tuple(str_field(field) for field in value._fields.values())
+        self.data[item] = (to_field(value.name),) + tuple(to_field(field) for field in value._fields.values())
 
     def new_row(self, name: Any):
-        dname = str_field(name)
+        dname = to_field(name)
         self.data.append((dname,) + (None,) * len(self.fields))
         self.names.append(dname)
         return Row(self, name, {field: None for field in self.fields})
