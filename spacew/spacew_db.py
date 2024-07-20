@@ -41,7 +41,7 @@ def create_db(name):
         'imf_bz': intlist,
     }, date)
     db.save()
-
+t
 def load_db(name):
     return Database(f'~/.spacew/{name}.sdb')
 
