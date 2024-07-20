@@ -9,7 +9,7 @@ import os
 from datetime import datetime, date, time
 
 
-__all__ = ['Row', 'Database']
+__all__ = ['Row', 'Database', 'strlist', 'intlist']
 
 
 class DatabaseError(Exception):
@@ -22,6 +22,9 @@ RE_DTYPE = re.compile('bool|')
 
 
 class strlist(list):
+    pass
+
+class intlist(list):
     pass
 
 DATA_TYPES: dict[str, type] = {
@@ -53,10 +56,18 @@ def str_field(data: Any) -> str:
     elif isinstance(data, date | time | datetime):
         return str(data)
     elif isinstance(data, list):
-        try:
-            return ','.join([item.replace('\\', '\\\\').replace(',', '\\,') for item in data])
-        except AttributeError:
-            raise ValueError('fields that are lists must be strlists') from None
+        if isinstance(data[0], str):
+            try:
+                return ','.join([item.replace('\\', '\\\\').replace(',', '\\,') for item in data])
+            except AttributeError:
+                raise ValueError('not all elements in strlist are strings') from None
+        elif isinstance(data[0], int):
+            try:
+                return ','.join([repr(item) for item in data])
+            except AttributeError:
+                raise ValueError('not all elements in intlist are ints') from None
+        else:
+            raise ValueError(f'invalid type for list element: {type(data[0])!r}')
     else:
         raise ValueError(f'invalid field value: {data!r}')
 

@@ -1,7 +1,7 @@
 
 import os
 from datetime import date
-from database import Database
+from database import Database, strlist, intlist
 
 def db_exists():
     return os.path.exists('data.sdb')
