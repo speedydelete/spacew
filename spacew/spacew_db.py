@@ -60,7 +60,6 @@ def get_swpc_ftp_file(file: str, encoding='utf-8') -> str:
     ftp.retrbinary(f'RETR {file}', out.append)
     return ''.join([x.decode(encoding) for x in out])
 
-
 def load_txt_data(data: str, start: date, end: date, first: date | None, mul: int = 1) -> list[list[str]]:
     '''loads data in the .txt format used by api's'''
     lines = [line for line in data.split('\n') if len(line) > 0 and not line[0] in ('#', ':')]
@@ -76,4 +75,7 @@ def load_txt_data(data: str, start: date, end: date, first: date | None, mul: in
     if out[-1] == []:
         out = out[:-mul]
     return out
+
+def add_db_swpc_dsd(year: int) -> None:
+    db = load_db(year)
 
