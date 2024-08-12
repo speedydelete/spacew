@@ -1,6 +1,5 @@
 
 import os
-import ftplib
 from datetime import date
 from database import Database, strlist, intlist, timelist
 
@@ -48,34 +47,3 @@ def load_db(name):
 def init_dbs():
     if not os.path.exists('~/.spacew'):
         os.mkdir('~/.spacew')
-
-
-def get_swpc_ftp_file(file: str, encoding='utf-8') -> str:
-    '''retrieves a file using ftp from swpc'''
-    fdir, file = os.path.split(file)
-    ftp = ftplib.FTP('ftp.swpc.noaa.gov', encoding=encoding)
-    ftp.login()
-    ftp.cwd(fdir)
-    out = []
-    ftp.retrbinary(f'RETR {file}', out.append)
-    return ''.join([x.decode(encoding) for x in out])
-
-def load_txt_data(data: str, start: date, end: date, first: date | None, mul: int = 1) -> list[list[str]]:
-    '''loads data in the .txt format used by api's'''
-    lines = [line for line in data.split('\n') if len(line) > 0 and not line[0] in ('#', ':')]
-    lines += [''] * mul
-    if first is None:
-        first = date.fromisoformat('-'.join(lines[0].split(' ')[:3]))
-    info = lines[(start - first).days * mul:(end - first).days * mul]
-    out = []
-    for line in info:
-        line = line.split(' ')
-        line = [x for x in line if x != '']
-        out.append(line)
-    if out[-1] == []:
-        out = out[:-mul]
-    return out
-
-def add_db_swpc_dsd(year: int) -> None:
-    db = load_db(year)
-

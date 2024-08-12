@@ -167,3 +167,6 @@ cython_debug/
 
 # Databases
 *.sdb
+
+# Configs
+config.json

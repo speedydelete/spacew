@@ -1,0 +1,17 @@
+{
+    "token": "put token here",
+    "status": {
+        "enabled": true,
+        "channel": "put status channel id here"
+    },
+    "alerts": {
+        "enabled": true,
+        "channel": "put alerts channel id here",
+        "kp": [
+            {
+                "threshold": "7",
+                "message": "@everyone aurora activity is currently very high (Kp{kp}/G{int(kp[0])-4})"
+            }
+        ]
+    }
+}
