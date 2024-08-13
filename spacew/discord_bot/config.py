@@ -19,6 +19,7 @@ class Config:
     token: str = ''
     status_enabled: bool = False
     status_channel: Channel | None = None
+    status_message: str = ''
     alerts_enabled: bool = False
     alerts_channel: Channel | None = None
 
@@ -34,15 +35,13 @@ def key(key: str) -> Any:
     return conf
 
 
-def load_status(client: discord.Client, out: Config, config: Any) -> Config:
-    status_channel = client.get_channel(int(key('status.channel')))
-    if status_channel is None:
-        raise ConfigError(f'unrecognized channel {key('status.channel')!r}')
-    out.status_channel = status_channel
+def load_status(out: Config) -> Config:
+    out.status_channel = key('status.channel')
+    out.status_message = key('status.message')
     return out
 
 
-def get(client: discord.Client) -> Config:
+def load() -> Config:
     global config
     out = Config()
     with open('config.json', 'r', encoding='utf-8') as file:
@@ -50,13 +49,11 @@ def get(client: discord.Client) -> Config:
     out.token = key('token')
     if key('status.enabled'):
         out.status_enabled = True
-        out = load_status(client, out, key('status'))
+        out = load_status(out)
     return out
 
-def get_only_token() -> Config:
-    global config
-    out = Config()
-    with open('config.json', 'r', encoding='utf-8') as file:
-        config = json.load(file)
-    out.token = key('token')
+def add_client(out: Config, client: discord.Client) -> Config:
+    out.status_channel = client.get_channel(out.status_channel) # type: ignore
+    if out.status_channel is None:
+        raise ConfigError(f'unrecognized channel {key('status.channel')!r}')
     return out

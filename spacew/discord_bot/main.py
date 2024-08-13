@@ -14,16 +14,14 @@ client = discord.Client(
 )
 
 
-config = config_parser.get_only_token()
+config = config_parser.load()
 
 @client.event
 async def on_ready():
     global config
     print(f'logged in as {client.user}')
-    config = config_parser.get(client)
-    if config.status_enabled:
-        await config.status_channel.send('current kp: ' + now.kp) # type:ignore
-        print('sent')
+    config = config_parser.add_client(config, client)
+
 
 @client.event
 async def on_message(message):
@@ -34,15 +32,16 @@ async def on_message(message):
 
 
 now = current.now()
-# @tasks.loop(seconds=14)
-# async def set_now():
-#     global now
-#     now = current.now()
+@tasks.loop(seconds=14)
+async def set_now():
+    global now
+    now = current.now()
 
 
-# @tasks.loop(seconds=30)
-# async def status():
-#     if config.status_enabled:
-#         await config.status_channel.send('current kp: ' + now.kp) # type: ignore
+@tasks.loop(seconds=30)
+async def status():
+    if config.status_enabled:
+        await config.status_channel.send(eval('"' + config.status_message + '"')) # type: ignore
+
 
 client.run(config.token)
