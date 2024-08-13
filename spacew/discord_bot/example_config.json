@@ -7,10 +7,10 @@
     "alerts": {
         "enabled": true,
         "channel": "put alerts channel id here",
-        "kp": [
+        "alerts": [
             {
-                "threshold": "7",
-                "message": "@everyone aurora activity is currently very high (Kp{kp}/G{int(kp[0])-4})"
+                "check": "int(now.kp[0])>=7",
+                "message": "@everyone aurora activity is currently very high (Kp{now.kp}/G{now.g})"
             }
         ]
     }
