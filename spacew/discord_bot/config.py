@@ -18,6 +18,7 @@ global config
 class Config:
     token: str = ''
     status_enabled: bool = False
+    status_channel_id: int = -1
     status_channel: Channel | None = None
     status_message: str = ''
     alerts_enabled: bool = False
@@ -36,7 +37,7 @@ def key(key: str) -> Any:
 
 
 def load_status(out: Config) -> Config:
-    out.status_channel = key('status.channel')
+    out.status_channel_id = int(key('status.channel'))
     out.status_message = key('status.message')
     return out
 
@@ -53,7 +54,7 @@ def load() -> Config:
     return out
 
 def add_client(out: Config, client: discord.Client) -> Config:
-    out.status_channel = client.get_channel(out.status_channel) # type: ignore
+    out.status_channel = client.get_channel(out.status_channel_id) # type: ignore
     if out.status_channel is None:
         raise ConfigError(f'unrecognized channel {key('status.channel')!r}')
     return out

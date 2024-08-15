@@ -40,8 +40,12 @@ async def set_now():
 
 @tasks.loop(seconds=30)
 async def status():
+    print('running status')
     if config.status_enabled:
-        await config.status_channel.send(eval('"' + config.status_message + '"')) # type: ignore
+        await config.status_channel.send(eval('f"' + config.status_message + '"')) # type: ignore
 
 
 client.run(config.token)
+
+set_now.start()
+status.start()
