@@ -1,14 +1,16 @@
 
 from typing import Any
-from datetime import date, time, timedelta
+from datetime import date, time, datetime, timedelta
 import os
 from database import Database, strlist, intlist, timelist
-from get_data import get_kp_ap_data
+from get_data import get_kp_ap_data, get_solar_data
 
 
 def create_db(name):
+    path = os.path.expanduser(f'~/.spacew/{name}.sdb')
+    if os.path.exists(path):
+        os.remove(path)
     db = Database(os.path.expanduser(f'~/.spacew/{name}.sdb'), {
-        'time': time,
         'spots': int,
         'f107': int,
         'new_regions': int,
@@ -46,7 +48,11 @@ def create_db(name):
     return db
 
 def load_db(name: Any) -> Database:
-    return Database(os.path.expanduser(f'~/.spacew/{name}.sdb'))
+    path = os.path.expanduser(f'~/.spacew/{name}.sdb')
+    if not os.path.exists(path):
+        return create_db(path)
+    else:
+        return Database(path)
 
 def init_dbs() -> None:
     path = os.path.expanduser('~/.spacew')
@@ -61,6 +67,21 @@ def add_kp_ap(year: int, db: Database) -> Database:
         row.save()
     return db
 
+def add_solar(year: int, db: Database) -> Database:
+    data = get_solar_data(date(year, 1, 1), date(year + 1, 1, 1))
+    for row in db:
+        sd = data[row.name]
+        row.spots = sd.spots
+        row.f107 = sd.f107
+        row.new_regions = sd.new_regions
+        row.bg_flux = sd.bg_flux
+        row.max_flux = sd.max_flux
+        row.c_flares = sd.c_flares
+        row.m_flares = sd.m_flares
+        row.x_flares = sd.x_flares
+        row.save()
+    return db
+
 
 def make_db_for_year(year):
     db = create_db(year)
@@ -70,11 +91,13 @@ def make_db_for_year(year):
         db.add_row(day)
         day += timedelta(days=1)
     db = add_kp_ap(year, db)
+    if end.year < date.today().year:
+        db = add_solar(year, db)
     db.save()
 
 
 if __name__ == '__main__':
-    #init_dbs()
-    #make_db_for_year(2003)
+    init_dbs()
+    make_db_for_year(2003)
     db = load_db(2003)
-    print(db[date(2003, 10, 30)].kp)
+    print(db[date(2003, 10, 30)]._fields)

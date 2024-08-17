@@ -114,7 +114,6 @@ class Row:
         self._fields = fields
 
     def __getattr__(self, attr: str) -> Any:
-        print(self._fields)
         if attr in self._fields:
             return self._fields[attr]
         else:
@@ -183,7 +182,16 @@ class Database:
             self.meta = metadata
             self.data = []
             self.names = []
+            self.last_modified = datetime.now()
+
+    @property
+    def last_modified(self) -> datetime:
+        return self.meta['last_modified']
     
+    @last_modified.setter
+    def last_modified(self, value: datetime) -> None:
+        self.meta['last_modified'] = value
+
     def __iter__(self) -> Generator[Row, None, None]:
         for name in self.names:
             yield self[name]
@@ -219,6 +227,7 @@ class Database:
     def save(self):
         data = '\n'.join([comma_join(row) for row in self.data])
         data = 'name,' + ','.join(self.fields) + '\n' + data
+        self.meta['last_modified'] = datetime.now()
         for k, v in self.meta.items():
             data = f'#{k}={v}\n' + data
         with open(self.filename, 'w', encoding='utf-8') as file:

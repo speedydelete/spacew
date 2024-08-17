@@ -22,6 +22,18 @@ class DayData:
     s: int = -1
     g: int = -1
 
+@dataclass
+class SolarData:
+    f107: int = -1
+    spots: int = -1
+    spot_area: int = -1
+    new_regions: int = -1
+    bg_flux: str = 'X99.99'
+    max_flux: str = 'X99.99'
+    c_flares: int = -1
+    m_flares: int = -1
+    x_flares: int = -1
+
 
 def _request(uri: str) -> requests.Response:
     req = requests.get(uri)
@@ -92,4 +104,30 @@ def get_kp_ap_data(start: date, end: date) -> dict[str, tuple[tuple[str, ...], t
             aps.append(int(line[8]))
         key = date.fromisoformat('-'.join(data[i*8][:3]))
         out[key] = (tuple(kps), tuple(aps))
+    return out
+
+def get_solar_data(start: date, end: date) -> dict[date, SolarData]:
+    '''gets data on the sun's activity for date(s)'''
+    out = {}
+    if end.year < date.today().year:
+        data = get_swpc_ftp_file(f'pub/warehouse/{start.year}/{start.year}_DSD.txt')
+        data = load_txt_data(data, start, end, date(start.year, 1, 1))
+        for line in data:
+            key = date.fromisoformat('-'.join(line[:3]))
+            out[key] = SolarData(
+                f107 = int(line[3]),
+                spots = int(line[4]),
+                spot_area = int(line[5]),
+                new_regions = int(line[6]),
+                bg_flux = str(line[8]),
+                max_flux = 'X99.99',
+                c_flares = int(line[9]),
+                m_flares = int(line[10]),
+                x_flares = int(line[11]),
+            )
+    elif end <= date.today():
+        for day in range((end - start).days):
+            out[start + timedelta(days=day)] = SolarData()
+    else:
+        pass
     return out
