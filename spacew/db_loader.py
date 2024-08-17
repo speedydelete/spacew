@@ -40,9 +40,13 @@ def create_db(name):
         'imf_bz': intlist,
     }, date)
     db.save()
+    return db
 
 def load_db(name):
-    return Database(f'~/.spacew/{name}.sdb')
+    if not os.path.exists(f'~/.spacew/{name}.sdb'):
+        return create_db(name)
+    else:
+        return Database(f'~/.spacew/{name}.sdb')
 
 def init_dbs():
     if not os.path.exists('~/.spacew'):
