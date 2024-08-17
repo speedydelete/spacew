@@ -1,7 +1,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Generator, Iterable
 
 import re
 import json
@@ -15,22 +15,17 @@ __all__ = ['Row', 'Database', 'strlist', 'intlist', 'timelist']
 class DatabaseError(Exception):
     pass
 
-
 RE_COMMA = re.compile(r'(?<!\\),')
-RE_COLON = re.compile(r'(?<!\\):')
+RE_COMMA_REPL = re.compile(r'(?<!\\)\\,')
 
+def comma_split(text: str) -> list[str]:
+    items = RE_COMMA.split(text)
+    items = [RE_COMMA_REPL.sub(',', item).replace('\\\\', '\\') for item in items]
+    return items
 
-def field_enc_str(text: str) -> str:
-    text = text.replace('\\', '\\\\')
-    text = text.replace(',', '\\,')
-    text = text.replace(':', '\\:')
-    return text
-
-def field_dec_str(text: str) -> str:
-    text = RE_COLON.sub(':', text)
-    text = RE_COMMA.sub(',', text)
-    text = text.replace('\\\\', '\\')
-    return text
+def comma_join(items: Iterable[str]) -> str:
+    items = [item.replace(',', '\\,').replace('\\\\', '\\') for item in items]
+    return ','.join(items)
 
 class strlist(list):
     pass
@@ -54,7 +49,7 @@ DATA_TYPES: dict[str, type] = {
 }
 
 with open('meta_types.json', 'r', encoding='utf-8') as meta_types:
-    META_TYPES = json.load(meta_types)
+    META_TYPES = {k: eval(v) for k, v in json.load(meta_types).items()}
 
 def to_field(data: Any) -> str:
     if data is None:
@@ -66,10 +61,10 @@ def to_field(data: Any) -> str:
     elif isinstance(data, complex):
         return f'{data.real!r}+{data.imag!r}'
     elif isinstance(data, str):
-        return field_enc_str(data)
+        return data
     elif isinstance(data, date | time | datetime):
         return str(data)
-    elif isinstance(data, list):
+    elif isinstance(data, list | tuple):
         if isinstance(data[0], str):
             try:
                 return ','.join([item.replace('\\', '\\\\').replace(',', '\\,') for item in data])
@@ -100,7 +95,7 @@ def from_field(data: str, dtype: type) -> Any:
         real, imag = data.split('+')
         return complex(float(real), float(imag))
     elif dtype == str:
-        return data.replace('\\,', ',').replace('\\\\', '\\')
+        return data
     elif dtype in (date, time, datetime):
         return dtype.fromisoformat(data)
     elif dtype == strlist:
@@ -113,12 +108,13 @@ def from_field(data: str, dtype: type) -> Any:
 
 class Row:
 
-    def __init__(self, db: Database, name: str, fields: dict[str, Any]) -> None:
+    def __init__(self, db: Database, name: Any, fields: dict[str, Any]) -> None:
         self._db = db
         self.name = name
         self._fields = fields
 
     def __getattr__(self, attr: str) -> Any:
+        print(self._fields)
         if attr in self._fields:
             return self._fields[attr]
         else:
@@ -147,6 +143,9 @@ class Row:
     def save(self):
         self._db[self.name] = self
 
+    def _to_field(self):
+        return (to_field(self.name),) + tuple(to_field(field) for field in self._fields.values())
+
 
 class Database:
 
@@ -156,11 +155,11 @@ class Database:
         if db_schema is None:
             try:
                 with open(self.filename, 'r', encoding='utf-8') as file:
-                    data = file.readlines()
+                    data = [line[:-1] for line in file.readlines()]
             except FileNotFoundError:
                 raise ValueError('schema required for creating new database') from None
-            meta = [line.split('=') for line in data if line[0] != '#']
-            meta = {line[0]: '='.join(line[1]) for line in meta}
+            meta = [line.split('=') for line in data if line[0] == '#']
+            meta = {line[0][1:]: '='.join(line[1:]) for line in meta}
             self.meta = {k: from_field(v, META_TYPES[k]) for k, v in meta.items()}
             try:
                 schema = self.meta['schema']
@@ -168,25 +167,32 @@ class Database:
             except KeyError:
                 raise DatabaseError(f'database {filename!r} has invalid or no schema') from None
             self.fntype, self.schema = schema[0], schema[1:]
-            data = [tuple(RE_COMMA.split(line)) for line in data]
+            data = [tuple(comma_split(line)) for line in data if not line.startswith('#')]
             self.fields = data[0][1:]
-            self.data = data
-            self.names = [row[0] for row in data]
+            self.data = data[1:]
+            self.names = [from_field(row[0], self.fntype) for row in self.data]
         else:
             if os.path.exists(self.filename):
                 raise DatabaseError(f'database already exists: \'{self.filename}\'')
             self.fields = tuple(db_schema.keys())
-            self.schema = tuple(db_schema.values())
             if fntype is None:
                 raise TypeError('fntype required for creating new database')
+            self.schema = (fntype,) + tuple(db_schema.values())
             self.fntype = fntype
             metadata['schema'] = ','.join([dtype.__name__ for dtype in self.schema])
             self.meta = metadata
             self.data = []
             self.names = []
+    
+    def __iter__(self) -> Generator[Row, None, None]:
+        for name in self.names:
+            yield self[name]
 
-    def __getitem__(self, item: str | int) -> Row:
-        if isinstance(item, str):
+    def __len__(self):
+        return len(self.names)
+
+    def __getitem__(self, item) -> Row:
+        if not isinstance(item, int):
             item = self.names.index(item)
         try:
             row = self.data[item]
@@ -195,22 +201,23 @@ class Database:
         except KeyError:
             raise ValueError(f'item {item!r} not in database') from None
 
-    def __setitem__(self, item: Any, value: Row) -> None:
+    def __setitem__(self, item: Any, row: Row) -> None:
         if not isinstance(item, int):
             item = to_field(item)
             item = self.names.index(item)
-        self.data[item] = (to_field(value.name),) + tuple(to_field(field) for field in value._fields.values())
+        self.data[item] = row._to_field()
 
-    def new_row(self, name: Any):
-        dname = to_field(name)
-        self.data.append((dname,) + (None,) * len(self.fields))
-        self.names.append(dname)
-        return Row(self, name, {field: None for field in self.fields})
-
-    add_row = new_row
+    def new_row(self, name: Any) -> Row:
+        row = Row(self, name, {field: None for field in self.fields})
+        self.data.append(row._to_field())
+        self.names.append(to_field(name))
+        return row
+    
+    def add_row(self, name: Any) -> Row:
+        return self.new_row(name)
 
     def save(self):
-        data = '\n'.join([','.join(row) for row in self.data])
+        data = '\n'.join([comma_join(row) for row in self.data])
         data = 'name,' + ','.join(self.fields) + '\n' + data
         for k, v in self.meta.items():
             data = f'#{k}={v}\n' + data

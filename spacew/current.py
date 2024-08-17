@@ -1,12 +1,12 @@
 
 from datetime import datetime, date, timedelta
-from .get_data import Data, request, load_txt_data
-from . import util
-from .db_loader import load_db
+from get_data import DayData, request, request_json, load_txt_data
+import util
+from db_loader import load_db
 
 
 def noaa_scales() -> tuple[int, int, int]:
-    data = request('https://services.swpc.noaa.gov/products/noaa-scales.json', 'json')
+    data = request_json('https://services.swpc.noaa.gov/products/noaa-scales.json')
     data = data['0']
     r = data['R']['Scale']
     s = data['S']['Scale']
@@ -23,7 +23,7 @@ def kp_ap() -> tuple[str, int]:
 
 
 def now():
-    out = Data()
+    out = DayData()
     out.dt = datetime.now()
     out.r, out.s, out.g = noaa_scales()
     out.kp, out.ap = kp_ap()
