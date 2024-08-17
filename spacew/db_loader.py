@@ -12,6 +12,7 @@ def create_db(name):
         os.remove(path)
     db = Database(os.path.expanduser(f'~/.spacew/{name}.sdb'), {
         'spots': int,
+        'spot_area': int,
         'f107': int,
         'new_regions': int,
         'bg_flux': str,
@@ -47,6 +48,9 @@ def create_db(name):
     db.save()
     return db
 
+def db_exists(name: Any) -> bool:
+    return os.path.exists(os.path.expanduser(f'~/.spacew/{name}.sdb'))
+
 def load_db(name: Any) -> Database:
     path = os.path.expanduser(f'~/.spacew/{name}.sdb')
     if not os.path.exists(path):
@@ -72,6 +76,7 @@ def add_solar(year: int, db: Database) -> Database:
     for row in db:
         sd = data[row.name]
         row.spots = sd.spots
+        row.spot_area = sd.spot_area
         row.f107 = sd.f107
         row.new_regions = sd.new_regions
         row.bg_flux = sd.bg_flux
@@ -94,6 +99,22 @@ def make_db_for_year(year):
     if end.year < date.today().year:
         db = add_solar(year, db)
     db.save()
+
+def get_data(start: date, end: date | None = None):
+    if end is None:
+        end = start + timedelta(days=1)
+    out = {}
+    dbs = {}
+    for _year in range(end.year - start.year + 1):
+        year = start.year + _year
+        if not db_exists(year):
+            make_db_for_year(year)
+        dbs[year] = load_db(year)
+    day = start
+    while day < end:
+        out[day] = dbs[day.year][day]
+        day += timedelta(days=1)
+    return out
 
 
 if __name__ == '__main__':
