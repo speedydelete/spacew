@@ -2,6 +2,7 @@
 from datetime import datetime, date, timedelta
 from .get_data import Data, request, load_txt_data
 from . import util
+from .spacew_db import load_db
 
 
 def noaa_scales() -> tuple[int, int, int]:

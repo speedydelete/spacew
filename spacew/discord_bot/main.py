@@ -3,8 +3,14 @@ import logging
 from logging import DEBUG, INFO, WARN, ERROR
 from spacew import current
 import config as config_parser
+from spacew.db_loader import init_dbs
 import discord
 from discord.ext import tasks
+
+
+init_dbs()
+
+config = config_parser.load()
 
 
 logger = logging.getLogger('discord.aurora_bot')
@@ -16,9 +22,6 @@ client = discord.Client(
     intents=intents,
     allowed_mentions=discord.AllowedMentions(everyone=True),
 )
-
-
-config = config_parser.load()
 
 
 @client.event
