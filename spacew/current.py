@@ -1,18 +1,7 @@
 
 from datetime import datetime, date, timedelta
-from dataclasses import dataclass
-from .get_data import request, load_txt_data
+from .get_data import Data, request, load_txt_data
 from . import util
-
-
-@dataclass
-class Now:
-    dt: datetime = datetime.now()
-    kp: str = '-1'
-    ap: int = -1
-    r: int = -1
-    s: int = -1
-    g: int = -1
 
 
 def noaa_scales() -> tuple[int, int, int]:
@@ -33,7 +22,7 @@ def kp_ap() -> tuple[str, int]:
 
 
 def now():
-    out = Now()
+    out = Data()
     out.dt = datetime.now()
     out.r, out.s, out.g = noaa_scales()
     out.kp, out.ap = kp_ap()

@@ -2,9 +2,19 @@
 from typing import Any
 import os
 import ftplib
-from datetime import date
+from datetime import datetime, date
+from dataclasses import dataclass
 import requests
 
+
+@dataclass
+class Data:
+    dt: datetime = datetime.now()
+    kp: str = '-1'
+    ap: int = -1
+    r: int = -1
+    s: int = -1
+    g: int = -1
 
 def request(uri: str, mode: str = 'text') -> Any:
     req = requests.get(uri)
