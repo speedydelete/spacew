@@ -5,7 +5,8 @@ import ftplib
 from datetime import date
 import requests
 
-def request(uri: str, mode: str = 'text') -> str | Any:
+
+def request(uri: str, mode: str = 'text') -> Any:
     req = requests.get(uri)
     if req.status_code < 400:
         if mode == 'text':
@@ -26,6 +27,7 @@ def get_swpc_ftp_file(file: str, encoding: str='utf-8') -> str:
     out = []
     ftp.retrbinary(f'RETR {file}', out.append)
     return ''.join([x.decode(encoding) for x in out])
+
 
 def load_txt_data(data: str, start: date, end: date, first: date | None = None, mul: int = 1) -> list[list[str]]:
     '''loads data in the .txt format used by api's'''

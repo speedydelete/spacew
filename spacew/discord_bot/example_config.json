@@ -1,8 +1,12 @@
 {
     "token": "put token here",
+    "default_message": "kp: {now.kp}",
     "status": {
         "enabled": true,
-        "channel": "put status channel id here"
+        "channel": "put status channel id here",
+        "edit": true,
+        "edit_message": "put message id to edit here, if edit = false, this is not needed",
+        "message": null // if it's null, it's replaced with default_message
     },
     "alerts": {
         "enabled": true,

@@ -17,9 +17,13 @@ global config
 @dataclass
 class Config:
     token: str = ''
+    default_message: str = ''
     status_enabled: bool = False
-    status_channel_id: int = -1
+    status_channel_id: int | None = None
     status_channel: Channel | None = None
+    status_edit: bool = False
+    status_edit_message_id: int | None = None
+    status_edit_message: discord.Message | None = None
     status_message: str = ''
     alerts_enabled: bool = False
     alerts_channel: Channel | None = None
@@ -38,7 +42,14 @@ def key(key: str) -> Any:
 
 def load_status(out: Config) -> Config:
     out.status_channel_id = int(key('status.channel'))
-    out.status_message = key('status.message')
+    status_message = key('status.message')
+    if status_message is None:
+        out.status_message = out.default_message
+    else:
+        out.status_message = status_message
+    out.status_edit = key('status.edit')
+    if out.status_edit:
+        out.status_edit_message_id = int(key('status.edit_message'))
     return out
 
 
@@ -48,13 +59,19 @@ def load() -> Config:
     with open('config.json', 'r', encoding='utf-8') as file:
         config = json.load(file)
     out.token = key('token')
+    out.default_message = key('default_message')
     if key('status.enabled'):
         out.status_enabled = True
         out = load_status(out)
     return out
 
-def add_client(out: Config, client: discord.Client) -> Config:
-    out.status_channel = client.get_channel(out.status_channel_id) # type: ignore
-    if out.status_channel is None:
-        raise ConfigError(f'unrecognized channel {key('status.channel')!r}')
+async def add_client(out: Config, client: discord.Client) -> Config:
+    if out.status_enabled:
+        out.status_channel = client.get_channel(out.status_channel_id) # type: ignore
+        if out.status_channel is None:
+            raise ConfigError(f'unrecognized channel {key('status.channel')!r}')
+        if out.status_edit_message_id is not None:
+            out.status_edit_message = await out.status_channel.fetch_message(out.status_edit_message_id) # type: ignore
+            if out.status_edit_message is None:
+                raise ConfigError(f'unrecognized message {key('status.edit_message')!r}')
     return out

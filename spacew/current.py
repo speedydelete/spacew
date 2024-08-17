@@ -1,9 +1,27 @@
 
-from datetime import date, timedelta
+from datetime import datetime, date, timedelta
 from dataclasses import dataclass
 from .get_data import request, load_txt_data
 from . import util
 
+
+@dataclass
+class Now:
+    dt: datetime = datetime.now()
+    kp: str = '-1'
+    ap: int = -1
+    r: int = -1
+    s: int = -1
+    g: int = -1
+
+
+def noaa_scales() -> tuple[int, int, int]:
+    data = request('https://services.swpc.noaa.gov/products/noaa-scales.json', 'json')
+    data = data['0']
+    r = data['R']['Scale']
+    s = data['S']['Scale']
+    g = data['G']['Scale']
+    return int(r), int(s), int(g)
 
 def kp_ap() -> tuple[str, int]:
     data = request('https://kp.gfz-potsdam.de/app/files/Kp_ap_nowcast.txt')
@@ -14,16 +32,9 @@ def kp_ap() -> tuple[str, int]:
     return tuple(data[-1])
 
 
-@dataclass
-class Now:
-    kp: str = '-1'
-    ap: int = -1
-    g: int = -1
-
 def now():
     out = Now()
+    out.dt = datetime.now()
+    out.r, out.s, out.g = noaa_scales()
     out.kp, out.ap = kp_ap()
-    out.g = int(out.kp[0]) - 4
-    if out.g < 0:
-        out.g = 0
     return out
