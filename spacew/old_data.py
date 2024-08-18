@@ -1,8 +1,8 @@
 
 from datetime import date, timedelta
-from datatypes import DayData
-import util
-from apis import request, get_swpc_ftp_file, load_txt_data
+from .datatypes import DayData
+from . import util
+from .apis import request, get_swpc_ftp_file, load_txt_data
 
 
 def get_kp_ap_data(start: date, end: date) -> dict[str, tuple[tuple[str, ...], tuple[int, ...]]]:
