@@ -6,43 +6,7 @@ import util
 from apis import request, get_swpc_ftp_file, load_txt_data
 
 
-@dataclass
-class Region:
-    id: int = -1
-    spots: int = -1
-    size: int = -1
-    magnitude: str = ''
-    zmcl: str = ''
-    location: str = ''
 
-@dataclass
-class Flare:
-    flux: str = ''
-    start: time = time(-1, -1, -1)
-    maximum: time = time(-1, -1, -1)
-    end: time = time(-1, 1, -1)
-
-@dataclass
-class DayData:
-    r_avg: int = -1
-    r_min: int = -1
-    r_max: int = -1
-    s_avg: int = -1
-    s_min: int = -1
-    s_max: int = -1
-    spots: int = -1
-    f107: int = -1
-    spot_area: int = -1
-    new_regions: int = -1
-    bg_flux: str = ''
-    max_flux: str = ''
-    c_flares: int = -1
-    m_flares: int = -1
-    x_flares: int = -1
-    regions: Iterable[Region] = ()
-    flares: Iterable[Flare] = ()
-    kp: Iterable[str] = ()
-    ap: Iterable[str] = ()
 
 
 def get_kp_ap_data(start: date, end: date) -> dict[str, tuple[tuple[str, ...], tuple[int, ...]]]:
@@ -100,3 +64,7 @@ def get_solar_data(start: date, end: date) -> dict[date, DayData]:
     else:
         pass
     return out
+
+
+def get_day_data():
+    pass

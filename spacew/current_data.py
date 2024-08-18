@@ -49,7 +49,7 @@ def curr_kp_ap() -> tuple[str, int]:
     return tuple(data[-1])
 
 
-def now():
+def get_current_data():
     out = CurrentData(dt=datetime.now())
     out.r, out.s, out.g = curr_noaa_scales()
     out.kp, out.ap = curr_kp_ap()
