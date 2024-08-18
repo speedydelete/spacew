@@ -1,19 +1,22 @@
 
+'''spacew Discord bot'''
+
+# pylint: disable=eval-used
+
 import logging
-from logging import DEBUG, INFO, WARN, ERROR
-from spacew import current
-import config as config_parser
-from spacew.db_loader import init_dbs
+import sys
 import discord
 from discord.ext import tasks
+from . import config as config_parser
+from .. import current_data
 
-
-init_dbs()
 
 config = config_parser.load()
 
-
-logger = logging.getLogger('discord.aurora_bot')
+logger = logging.getLogger('spacew_bot')
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(logging.getLogger('discord').handlers[0].formatter)
+logger.addHandler(handler)
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -27,7 +30,7 @@ client = discord.Client(
 @client.event
 async def on_ready():
     global config
-    logger.info(f'logged in as {client.user}')
+    logger.info('logged in as %s', client.user)
     config = await config_parser.add_client(config, client)
     set_now.start()
     status.start()
@@ -41,11 +44,11 @@ async def on_message(message):
     #     await message.channel.send('Hello!')
 
 
-now = current.now()
+now = current_data.get()
 @tasks.loop(seconds=14)
 async def set_now():
     global now
-    now = current.now()
+    now = current_data.get()
 
 
 config.status_message = """```

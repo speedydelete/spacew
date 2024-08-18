@@ -1,7 +1,6 @@
 
 '''gets past space weather data'''
 
-from typing import Sequence
 from datetime import date, timedelta
 from dataclasses import asdict
 from .datatypes import DayData, MultiDayData

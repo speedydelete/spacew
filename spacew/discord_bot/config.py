@@ -1,21 +1,21 @@
 
+'''configuration for the Discord bot'''
+
 from typing import Any
 import json
-import dataclasses
 from dataclasses import dataclass
 import discord
 
 
 class ConfigError(Exception):
-    pass
+    '''error for config'''
 
 type Channel = discord.abc.GuildChannel | discord.Thread | discord.abc.PrivateChannel
 
 
-global config
-
 @dataclass
 class Config:
+    '''bot configuration'''
     token: str = ''
     default_message: str = ''
     status_enabled: bool = False
@@ -28,13 +28,15 @@ class Config:
     alerts_enabled: bool = False
     alerts_channel: Channel | None = None
 
+config = Config()
 
-def key(key: str) -> Any:
+
+def key(k: str) -> Any:
     conf = config
-    skey = key.split('.')
+    skey = k.split('.')
     for i, part in enumerate(skey):
-        if part in conf:
-            conf = conf[part]
+        if part in conf: # type: ignore
+            conf = conf[part] # type: ignore
         else:
             raise ConfigError(f'{'.'.join(skey[:i])!r} key is required')
     return conf

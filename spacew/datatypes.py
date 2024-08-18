@@ -1,8 +1,6 @@
 
 '''various types and dataclasses'''
 
-# pylint: disable=too-many-instance-attributes
-
 from typing import Literal, Sequence
 from datetime import date, time, datetime
 from dataclasses import dataclass
