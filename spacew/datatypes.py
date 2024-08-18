@@ -1,8 +1,8 @@
 
 from typing import Literal, Iterable, NewType
-from datetime import time
-import re
+from datetime import time, datetime
 from dataclasses import dataclass
+
 
 type RSG = Literal[0, 1, 2, 3, 4, 5]
 
@@ -54,3 +54,27 @@ class DayData:
     flares: Iterable[Flare] = ()
     kp: Iterable[str] = ()
     ap: Iterable[str] = ()
+
+@dataclass
+class CurrentData:
+    dt: datetime = datetime.now()
+    r: int = -1
+    r_24h_max: int = -1
+    s: int = -1
+    s_24h_max: int = -1
+    g: int = -1
+    g_24h_max: int = -1
+    spots: int = -1
+    f107: int = -1
+    spot_area: int = -1
+    new_regions: int = -1
+    flux: int = -1
+    flux_2h_max: int = -1
+    flux_24h_max: int = -1
+    c_flares: int = -1
+    m_flares: int = -1
+    x_flares: int = -1
+    regions: Iterable[Region] = ()
+    flares: Iterable[Flare] = ()
+    kp: str = ''
+    ap: int = -1

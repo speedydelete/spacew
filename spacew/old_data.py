@@ -1,12 +1,8 @@
 
-from typing import Iterable
-from datetime import date, time, timedelta
-from dataclasses import dataclass
+from datetime import date, timedelta
+from datatypes import DayData
 import util
 from apis import request, get_swpc_ftp_file, load_txt_data
-
-
-
 
 
 def get_kp_ap_data(start: date, end: date) -> dict[str, tuple[tuple[str, ...], tuple[int, ...]]]:
@@ -29,11 +25,11 @@ def get_kp_ap_data(start: date, end: date) -> dict[str, tuple[tuple[str, ...], t
         for hour in day:
             dd = today + timedelta(days=i)
             data.append([str(dd.year).zfill(4), str(dd.month).zfill(2), str(dd.day).zfill(2), \
-                        '0', '0', '0', '0', hour, str(util.KP_TO_AP_MAP[util.gfz_kp_to_real_kp(hour)]), '0'])
+                        '0', '0', '0', '0', hour, str(util.kp_to_ap(util.float_to_kp(hour))), '0'])
     for i in range(len(data)//8):
         kps, aps = [], []
         for line in data[i*8:i*8+8]:
-            kps.append(util.gfz_kp_to_real_kp(line[7]))
+            kps.append(util.float_to_kp(line[7]))
             aps.append(int(line[8]))
         key = date.fromisoformat('-'.join(data[i*8][:3]))
         out[key] = (tuple(kps), tuple(aps))
