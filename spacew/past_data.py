@@ -1,13 +1,15 @@
 
+'''gets past space weather data'''
+
 from datetime import date, timedelta
+from dataclasses import asdict
 from .datatypes import DayData
 from . import util
 from .apis import request, get_swpc_ftp_file, load_txt_data
 
 
-def get_kp_ap_data(start: date, end: date) -> dict[str, tuple[tuple[str, ...], tuple[int, ...]]]:
+def get_kp_ap_data(start: date, end: date) -> dict[date, DayData]:
     '''gets the kp/ap values for certain date(s)'''
-    out = {}
     today = date.today()
     data = request('https://www-app3.gfz-potsdam.de/kp_index/Kp_ap_since_1932.txt')
     data += '\n'.join(request('https://www-app3.gfz-potsdam.de/kp_index/Kp_ap_nowcast.txt').split('\n')[-9:])
@@ -26,13 +28,14 @@ def get_kp_ap_data(start: date, end: date) -> dict[str, tuple[tuple[str, ...], t
             dd = today + timedelta(days=i)
             data.append([str(dd.year).zfill(4), str(dd.month).zfill(2), str(dd.day).zfill(2), \
                         '0', '0', '0', '0', hour, str(util.kp_to_ap(util.float_to_kp(hour))), '0'])
+    out = {}
     for i in range(len(data)//8):
         kps, aps = [], []
         for line in data[i*8:i*8+8]:
             kps.append(util.float_to_kp(line[7]))
             aps.append(int(line[8]))
         key = date.fromisoformat('-'.join(data[i*8][:3]))
-        out[key] = (tuple(kps), tuple(aps))
+        out[key] = DayData(kps=tuple(kps), aps=tuple(aps))
     return out
 
 def get_solar_data(start: date, end: date) -> dict[date, DayData]:
@@ -62,5 +65,16 @@ def get_solar_data(start: date, end: date) -> dict[date, DayData]:
     return out
 
 
-def get_day_data():
-    pass
+def get_past_data(start: date, end: date | None = None) -> dict[date, DayData]:
+    if end is None:
+        end = start + timedelta(days=1)
+    out = {}
+    day = start
+    while day < end:
+        out[day] = DayData()
+        day += timedelta(days=1)
+    data = (get_kp_ap_data(start, end), get_solar_data(start, end))
+    for item in data:
+        for key, value in item.items():
+            out[key] = DayData(**(asdict(out[key]) | asdict(value)))
+    return out
