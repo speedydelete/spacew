@@ -65,7 +65,7 @@ def get_solar_data(start: date, end: date) -> dict[date, DayData]:
     return out
 
 
-def get_past_data(start: date, end: date | None = None) -> dict[date, DayData]:
+def get(start: date, end: date | None = None) -> dict[date, DayData]:
     if end is None:
         end = start + timedelta(days=1)
     out = {}
