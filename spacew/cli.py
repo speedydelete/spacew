@@ -8,7 +8,7 @@ import re
 import pprint
 import argparse
 import dateutil
-from spacew import get_data
+from . import get_past_data
 from . import util
 
 
@@ -92,7 +92,7 @@ def mode(arg: str) -> int:
 
 def date(arg: str) -> ddate:
     try:
-        return dateutil.parser.parse(arg).date()
+        return dateutil.parser.parse(arg).date() # type: ignore
     except ValueError:
         raise argparse.ArgumentTypeError(f'not a valid date: {arg}') from None
 
@@ -122,7 +122,7 @@ if end is None:
     end = start
 end += timedelta(days=1)
 flags = args.mode | (AP if args.ap else 0)
-data = get_data(start, end)
+data = get_past_data(start, end)
 
 if args.json:
     pprint.pp({
