@@ -1,13 +1,15 @@
 
+'''spacew command line interface'''
+
 from typing import Any, Callable
+from datetime import date as ddate, timedelta
 import math
 import re
-import argparse
 import pprint
-from datetime import date as ddate, timedelta
+import argparse
 import dateutil
-import util
-from db_loader import get_data
+from spacew import get_data
+from . import util
 
 
 VERSION = '1.0'
@@ -144,10 +146,10 @@ if flags & SUN:
 out += '\x1b[0m\n'
 
 for day, info in data.items():
-    avg_kp = util.average_kp(*info.kp)
+    avg_kp = util.average_kp(*info.kps)
     out += f'{color(avg_kp, 'kp', display=False)}{day.strftime('%x'):<10} '
     if flags & EARTH:
-        kps = util.sort_kps(*info.kp)
+        kps = util.sort_kps(*info.kps)
         min_kp = kps[0]
         max_kp = kps[-1]
         out += f'{color(avg_kp, 'kp', 2)} {color(min_kp, 'kp', 2)} {color(max_kp, 'kp', 2)} '
@@ -155,9 +157,9 @@ for day, info in data.items():
         out += f'{color(util.flux_to_r(info.max_flux), 'rsg', 1)} '
         #out += f'{color(util.pfu_to_s(info.flux_p_10mev), 'rsg', 1)}99 '
         out += '999 '
-        out += f'{color(util.KP_TO_G[avg_kp], 'rsg', 1)}'
-        out += f'{color(util.KP_TO_G[min_kp], 'rsg', 1)}'
-        out += f'{color(util.KP_TO_G[max_kp], 'rsg', 1)} '
+        out += f'{color(util.kp_to_g(avg_kp), 'rsg', 1)}'
+        out += f'{color(util.kp_to_g(min_kp), 'rsg', 1)}'
+        out += f'{color(util.kp_to_g(max_kp), 'rsg', 1)} '
         if flags & AP:
             ap = round(sum(info.aps)/len(info.aps))
             min_ap = min(info.aps)
@@ -165,10 +167,10 @@ for day, info in data.items():
             out += f'{color(ap, 'ap', 3)}{color(min_ap, 'ap', 3)}{color(max_ap, 'ap', 3)}'
         if flags & HOUR:
             if flags & AP:
-                for h_kp, h_ap in zip(info.kp, info.ap):
+                for h_kp, h_ap in zip(info.kps, info.aps):
                     out += f'{color(h_kp, 'kp', 2)} {h_ap:<3} '
             else:
-                for h_kp in info.kp:
+                for h_kp in info.kps:
                     out += f'{color(h_kp, 'kp', 2)} '
     if flags & SUN:
         out += f'{color(info.f107, 'sfu', 5)} {color(info.spots, 'spots', 5)} '

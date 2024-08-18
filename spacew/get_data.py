@@ -1,9 +1,8 @@
 
 from typing import Any
-from datetime import date, time, datetime, timedelta
+from datetime import date, timedelta
 import os
-from database import Database, strlist, intlist, timelist
-from old_data import get_kp_ap_data, get_solar_data
+from .old_data import get_kp_ap_data, get_solar_data
 
 
 def create_db(name):

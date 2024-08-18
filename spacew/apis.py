@@ -1,4 +1,6 @@
 
+'''interaction with space weather API's'''
+
 from typing import Any
 from datetime import date
 import os
@@ -7,7 +9,7 @@ import requests
 
 
 def _request(uri: str) -> requests.Response:
-    req = requests.get(uri)
+    req = requests.get(uri, timeout=3)
     if req.status_code < 400:
         return req
     else:

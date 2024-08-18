@@ -1,20 +1,21 @@
 
+'''current space weather data'''
+
 from datetime import datetime, date, timedelta
-from datatypes import Region, Flare, CurrentData
-import util
-from apis import request, request_json, load_txt_data
+from .datatypes import RSG, Kp, Ap, CurrentData
+from . import util
+from .apis import request, request_json, load_txt_data
 
 
-
-def curr_noaa_scales() -> tuple[int, int, int]:
+def curr_noaa_scales() -> tuple[RSG, RSG, RSG]:
     data = request_json('https://services.swpc.noaa.gov/products/noaa-scales.json')
     data = data['0']
     r = data['R']['Scale']
     s = data['S']['Scale']
     g = data['G']['Scale']
-    return int(r), int(s), int(g)
+    return int(r), int(s), int(g) # type: ignore
 
-def curr_kp_ap() -> tuple[str, int]:
+def curr_kp_ap() -> tuple[Kp, Ap]:
     data = request('https://kp.gfz-potsdam.de/app/files/Kp_ap_nowcast.txt')
     data = load_txt_data(data, date.today(), date.today() + timedelta(days=1), mul=8)
     data = [line[7:9] for line in data]

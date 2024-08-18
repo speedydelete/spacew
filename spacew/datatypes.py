@@ -1,14 +1,18 @@
 
-from typing import Literal, Iterable, NewType
+'''various types and dataclasses'''
+
+# pylint: disable=too-many-instance-attributes
+
+from typing import Literal, Sequence
 from datetime import time, datetime
 from dataclasses import dataclass
 
 
-type RSG = Literal[0, 1, 2, 3, 4, 5]
+type RSG = Literal[-1, 0, 1, 2, 3, 4, 5]
 
 type Flux = str
 
-type Kp = Literal['0', '0+', '1-', '1', '1+', 
+type Kp = Literal['-1', '0', '0+', '1-', '1', '1+',
                   '2-', '2', '2+', '3-', '3', '3+', 
                   '4-', '4', '4+', '5-', '5', '5+', 
                   '6-', '6', '6+', '7-', '7', '7+', 
@@ -19,6 +23,7 @@ type Ap = int
 
 @dataclass
 class Region:
+    '''active region data'''
     id: int = -1
     spots: int = -1
     size: int = -1
@@ -28,6 +33,7 @@ class Region:
 
 @dataclass
 class Flare:
+    '''solar flare data'''
     flux: str = ''
     start: time = time(-1, -1, -1)
     maximum: time = time(-1, -1, -1)
@@ -35,28 +41,33 @@ class Flare:
 
 @dataclass
 class DayData:
-    r_avg: int = -1
-    r_min: int = -1
-    r_max: int = -1
-    s_avg: int = -1
-    s_min: int = -1
-    s_max: int = -1
+    '''space weather for a previous day'''
+    r_avg: RSG = -1
+    r_min: RSG = -1
+    r_max: RSG = -1
+    s_avg: RSG = -1
+    s_min: RSG = -1
+    s_max: RSG = -1
+    g_avg: RSG = -1
+    g_min: RSG = -1
+    g_max: RSG = -1
     spots: int = -1
     f107: int = -1
     spot_area: int = -1
     new_regions: int = -1
-    bg_flux: str = ''
-    max_flux: str = ''
+    bg_flux: Flux = ''
+    max_flux: Flux = ''
     c_flares: int = -1
     m_flares: int = -1
     x_flares: int = -1
-    regions: Iterable[Region] = ()
-    flares: Iterable[Flare] = ()
-    kp: Iterable[str] = ()
-    ap: Iterable[str] = ()
+    regions: Sequence[Region] = ()
+    flares: Sequence[Flare] = ()
+    kps: Sequence[Kp] = ()
+    aps: Sequence[Ap] = ()
 
 @dataclass
 class CurrentData:
+    '''current space weather'''
     dt: datetime = datetime.now()
     r: int = -1
     r_24h_max: int = -1
@@ -74,7 +85,7 @@ class CurrentData:
     c_flares: int = -1
     m_flares: int = -1
     x_flares: int = -1
-    regions: Iterable[Region] = ()
-    flares: Iterable[Flare] = ()
-    kp: str = ''
+    regions: Sequence[Region] = ()
+    flares: Sequence[Flare] = ()
+    kp: Kp = '-1'
     ap: int = -1

@@ -5,5 +5,5 @@ from current_data import CurrentData, get_current_data
 
 __all__ = ['Region', 'Flare', 'DayData', 'CurrentData', 'get_data']
 
-def get_data(start: date, end: date | None = None) -> DayData:
+def get_data(start: date, end: date | None = None) -> dict[date, DayData]:
     pass
