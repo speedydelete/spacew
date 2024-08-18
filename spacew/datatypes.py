@@ -4,7 +4,7 @@
 # pylint: disable=too-many-instance-attributes
 
 from typing import Literal, Sequence
-from datetime import time, datetime
+from datetime import date, time, datetime
 from dataclasses import dataclass
 
 
@@ -89,3 +89,6 @@ class CurrentData:
     flares: Sequence[Flare] = ()
     kp: Kp = '-1'
     ap: int = -1
+
+
+type MultiDayData = dict[date, DayData]
