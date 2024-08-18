@@ -1,21 +1,10 @@
 
+from typing import Iterable
 from datetime import date, time, timedelta
 from dataclasses import dataclass
-from util import gfz_kp_to_real_kp, KP_TO_AP_MAP
+import util
 from apis import request, get_swpc_ftp_file, load_txt_data
 
-
-@dataclass
-class SolarData:
-    f107: int = -1
-    spots: int = -1
-    spot_area: int = -1
-    new_regions: int = -1
-    bg_flux: str = 'X99.99'
-    max_flux: str = 'X99.99'
-    c_flares: int = -1
-    m_flares: int = -1
-    x_flares: int = -1
 
 @dataclass
 class Region:
@@ -50,11 +39,10 @@ class DayData:
     c_flares: int = -1
     m_flares: int = -1
     x_flares: int = -1
-    regions: list[Region] = []
-    flares: list[Flare] = []
-    flux_p_1mev: int = -1
-    flux_p_10mev: int = -1
-    
+    regions: Iterable[Region] = ()
+    flares: Iterable[Flare] = ()
+    kp: Iterable[str] = ()
+    ap: Iterable[str] = ()
 
 
 def get_kp_ap_data(start: date, end: date) -> dict[str, tuple[tuple[str, ...], tuple[int, ...]]]:
@@ -77,11 +65,11 @@ def get_kp_ap_data(start: date, end: date) -> dict[str, tuple[tuple[str, ...], t
         for hour in day:
             dd = today + timedelta(days=i)
             data.append([str(dd.year).zfill(4), str(dd.month).zfill(2), str(dd.day).zfill(2), \
-                        '0', '0', '0', '0', hour, str(KP_TO_AP_MAP[gfz_kp_to_real_kp(hour)]), '0'])
+                        '0', '0', '0', '0', hour, str(util.KP_TO_AP_MAP[util.gfz_kp_to_real_kp(hour)]), '0'])
     for i in range(len(data)//8):
         kps, aps = [], []
         for line in data[i*8:i*8+8]:
-            kps.append(gfz_kp_to_real_kp(line[7]))
+            kps.append(util.gfz_kp_to_real_kp(line[7]))
             aps.append(int(line[8]))
         key = date.fromisoformat('-'.join(data[i*8][:3]))
         out[key] = (tuple(kps), tuple(aps))
@@ -112,5 +100,3 @@ def get_solar_data(start: date, end: date) -> dict[date, DayData]:
     else:
         pass
     return out
-
-

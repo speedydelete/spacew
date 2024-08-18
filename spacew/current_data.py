@@ -1,16 +1,36 @@
 
+from typing import Iterable
 from datetime import datetime, date, timedelta
 from dataclasses import dataclass
-from apis import request, request_json, load_txt_data
-from old_data import DayData
 import util
+from apis import request, request_json, load_txt_data
+from old_data import Region, Flare
+
 
 @dataclass
-class CurrentData(DayData):
+class CurrentData:
     dt: datetime = datetime.now()
     r: int = -1
+    r_24h_max: int = -1
     s: int = -1
+    s_24h_max: int = -1
     g: int = -1
+    g_24h_max: int = -1
+    spots: int = -1
+    f107: int = -1
+    spot_area: int = -1
+    new_regions: int = -1
+    flux: int = -1
+    flux_2h_max: int = -1
+    flux_24h_max: int = -1
+    c_flares: int = -1
+    m_flares: int = -1
+    x_flares: int = -1
+    regions: Iterable[Region] = ()
+    flares: Iterable[Flare] = ()
+    kp: str = ''
+    ap: int = -1
+
 
 def curr_noaa_scales() -> tuple[int, int, int]:
     data = request_json('https://services.swpc.noaa.gov/products/noaa-scales.json')
