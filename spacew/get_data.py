@@ -1,133 +1,123 @@
 
 from typing import Any
+from datetime import date, time, datetime, timedelta
 import os
-import ftplib
-from datetime import datetime, date, timedelta
-from dataclasses import dataclass
-from util import gfz_kp_to_real_kp, KP_TO_AP_MAP
-import requests
+from database import Database, strlist, intlist, timelist
+from old_data import get_kp_ap_data, get_solar_data
 
 
-GFZ_URL = 'https://www-app3.gfz-potsdam.de/'
-GFZ_FIRST_DATE = date(1932, 1, 1)
+def create_db(name):
+    path = os.path.expanduser(f'~/.spacew/{name}.sdb')
+    if os.path.exists(path):
+        os.remove(path)
+    db = Database(os.path.expanduser(f'~/.spacew/{name}.sdb'), {
+        'spots': int,
+        'spot_area': int,
+        'f107': int,
+        'new_regions': int,
+        'bg_flux': str,
+        'max_flux': str,
+        'c_flares': int,
+        'm_flares': int,
+        'x_flares': int,
+        'regions': intlist,
+        'region_spots': intlist,
+        'region_sizes': intlist,
+        'region_mags': strlist,
+        'region_zmcls': strlist,
+        'region_locs': strlist,
+        'flare_regions': intlist,
+        'flares': intlist,
+        'flare_starts': timelist,
+        'flare_maxes': timelist,
+        'flare_ends': timelist,
+        'flux_p_1mev': intlist,
+        'flux_p_10mev': intlist,
+        'flux_p_50mev': intlist,
+        'flux_p_100mev': intlist,
+        'flux_e_08mev': intlist,
+        'flux_e_2mev': intlist,
+        'wind_speed': intlist,
+        'wind_density': intlist,
+        'imf_bt': intlist,
+        'imf_bz': intlist,
+        'kp': strlist,
+        'ap': intlist,
+    }, date)
+    db.save()
+    return db
 
-SWPC_URL = 'https://services.swpc.noaa.gov/'
+def db_exists(name: Any) -> bool:
+    return os.path.exists(os.path.expanduser(f'~/.spacew/{name}.sdb'))
 
-@dataclass
-class DayData:
-    dt: datetime = datetime.now()
-    kp: str = '-1'
-    ap: int = -1
-    r: int = -1
-    s: int = -1
-    g: int = -1
-
-@dataclass
-class SolarData:
-    f107: int = -1
-    spots: int = -1
-    spot_area: int = -1
-    new_regions: int = -1
-    bg_flux: str = 'X99.99'
-    max_flux: str = 'X99.99'
-    c_flares: int = -1
-    m_flares: int = -1
-    x_flares: int = -1
-
-
-def _request(uri: str) -> requests.Response:
-    req = requests.get(uri)
-    if req.status_code < 400:
-        return req
+def load_db(name: Any) -> Database:
+    path = os.path.expanduser(f'~/.spacew/{name}.sdb')
+    if not os.path.exists(path):
+        return create_db(path)
     else:
-        raise ValueError(f'{req.status_code} {req.reason} while fetching {uri.split('/')[-1]}')
+        return Database(path)
 
-def request(uri: str) -> str:
-    return _request(uri).text
-
-def request_json(uri: str) -> Any:
-    return _request(uri).json
-
-def get_swpc_ftp_file(file: str, encoding: str='utf-8') -> str:
-    '''retrieves a file using ftp from swpc'''
-    fdir, file = os.path.split(file)
-    ftp = ftplib.FTP('ftp.swpc.noaa.gov', encoding=encoding)
-    ftp.login()
-    ftp.cwd(fdir)
-    out = []
-    ftp.retrbinary(f'RETR {file}', out.append)
-    return ''.join([x.decode(encoding) for x in out])
+def init_dbs() -> None:
+    path = os.path.expanduser('~/.spacew')
+    if not os.path.exists(path):
+        os.mkdir(path)
 
 
-def load_txt_data(data: str, start: date, end: date, first: date | None = None, mul: int = 1) -> list[list[str]]:
-    '''loads data in the .txt format used by api's'''
-    lines = [line for line in data.split('\n') if len(line) > 0 and not line[0] in ('#', ':')]
-    lines += [''] * mul
-    if first is None:
-        first = date.fromisoformat('-'.join(lines[0].split(' ')[:3]))
-    info = lines[(start - first).days * mul:(end - first).days * mul]
-    out = []
-    for line in info:
-        line = line.split(' ')
-        line = [x for x in line if x != '']
-        out.append(line)
-    if out[-1] == []:
-        out = out[:-mul]
-    return out
+def add_kp_ap(year: int, db: Database) -> Database:
+    data = get_kp_ap_data(date(year, 1, 1), date(year + 1, 1, 1))
+    for row in db:
+        row.kp, row.ap = data[row.name]
+        row.save()
+    return db
+
+def add_solar(year: int, db: Database) -> Database:
+    data = get_solar_data(date(year, 1, 1), date(year + 1, 1, 1))
+    for row in db:
+        sd = data[row.name]
+        row.spots = sd.spots
+        row.spot_area = sd.spot_area
+        row.f107 = sd.f107
+        row.new_regions = sd.new_regions
+        row.bg_flux = sd.bg_flux
+        row.max_flux = sd.max_flux
+        row.c_flares = sd.c_flares
+        row.m_flares = sd.m_flares
+        row.x_flares = sd.x_flares
+        row.save()
+    return db
 
 
-def get_kp_ap_data(start: date, end: date) -> dict[str, tuple[tuple[str, ...], tuple[int, ...]]]:
-    '''gets the kp/ap values for certain date(s)'''
-    out = {}
-    today = date.today()
-    data = request(GFZ_URL + 'kp_index/Kp_ap_since_1932.txt')
-    data += '\n'.join(request(GFZ_URL + 'kp_index/Kp_ap_nowcast.txt').split('\n')[-9:])
-    preds = request(SWPC_URL + 'text/3-day-forecast.txt')
-    preds = preds.replace('(G1)', '    ').replace('(G2)', '    ').replace('(G3)', '    ')
-    preds = preds.replace('(G4)', '    ').replace('(G5)', '    ')
-    preds = [x.split(' ')[1:] for x in preds.split('\n')[14:22]]
-    preds = [[y for y in x if y != ''] for x in preds]
-    preds = [[str(preds[j][i]) for j in range(8)] for i in range(3)]
-    data = load_txt_data(data, start, end, GFZ_FIRST_DATE if (today - start).days < 28 else None, mul=8)
-    for i, line in enumerate(data):
-        if line[7] == '-1.000':
-            data[i][7] = preds[0][i % 8]
-    for i, day in enumerate(preds):
-        for hour in day:
-            dd = today + timedelta(days=i)
-            data.append([str(dd.year).zfill(4), str(dd.month).zfill(2), str(dd.day).zfill(2), \
-                        '0', '0', '0', '0', hour, str(KP_TO_AP_MAP[gfz_kp_to_real_kp(hour)]), '0'])
-    for i in range(len(data)//8):
-        kps, aps = [], []
-        for line in data[i*8:i*8+8]:
-            kps.append(gfz_kp_to_real_kp(line[7]))
-            aps.append(int(line[8]))
-        key = date.fromisoformat('-'.join(data[i*8][:3]))
-        out[key] = (tuple(kps), tuple(aps))
-    return out
-
-def get_solar_data(start: date, end: date) -> dict[date, SolarData]:
-    '''gets data on the sun's activity for date(s)'''
-    out = {}
+def make_db_for_year(year):
+    db = create_db(year)
+    day = date(year, 1, 1)
+    end = date(year + 1, 1, 1)
+    while day < end:
+        db.add_row(day)
+        day += timedelta(days=1)
+    db = add_kp_ap(year, db)
     if end.year < date.today().year:
-        data = get_swpc_ftp_file(f'pub/warehouse/{start.year}/{start.year}_DSD.txt')
-        data = load_txt_data(data, start, end, date(start.year, 1, 1))
-        for line in data:
-            key = date.fromisoformat('-'.join(line[:3]))
-            out[key] = SolarData(
-                f107 = int(line[3]),
-                spots = int(line[4]),
-                spot_area = int(line[5]),
-                new_regions = int(line[6]),
-                bg_flux = str(line[8]),
-                max_flux = 'X99.99',
-                c_flares = int(line[9]),
-                m_flares = int(line[10]),
-                x_flares = int(line[11]),
-            )
-    elif end <= date.today():
-        for day in range((end - start).days):
-            out[start + timedelta(days=day)] = SolarData()
-    else:
-        pass
+        db = add_solar(year, db)
+    db.save()
+
+def get_data(start: date, end: date | None = None):
+    if end is None:
+        end = start + timedelta(days=1)
+    out = {}
+    dbs = {}
+    for _year in range(end.year - start.year + 1):
+        year = start.year + _year
+        if not db_exists(year):
+            make_db_for_year(year)
+        dbs[year] = load_db(year)
+    day = start
+    while day < end:
+        out[day] = dbs[day.year][day]
+        day += timedelta(days=1)
     return out
+
+
+if __name__ == '__main__':
+    init_dbs()
+    make_db_for_year(2003)
+    db = load_db(2003)
+    print(db[date(2003, 10, 30)]._fields)
