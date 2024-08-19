@@ -126,7 +126,7 @@ def current(args: argparse.Namespace) -> dict | str:
     return f'not implemented yet (args: {args!r})'
 
 
-ARCHIVE_CMDS = ('archive', 'history')
+ARCHIVE_CMDS = ('archive', 'history', 'on')
 CURRENT_CMDS = ('current', 'now')
 COMMANDS = ARCHIVE_CMDS + CURRENT_CMDS
 
