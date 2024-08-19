@@ -5,17 +5,15 @@ from typing import Any, Callable
 from datetime import date as ddate, timedelta
 import math
 import re
+import json
 import pprint
 import argparse
 import dateutil
-from . import get_past_data
+from .cache import get_past_data
 from . import util
 
 
 VERSION = '1.0'
-
-ANSI_ESCAPE = re.compile(r'\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-
 
 KP_COLOR = {
     '0': '39', '0+': '39',
@@ -63,6 +61,75 @@ def color(value: Any, map_name: str, width: int | None = None, display: bool = T
     return f'\x1b[{COLOR[map_name](value)}m{after}'
 
 
+def archive(args: argparse.Namespace) -> dict | str:
+    start = args.date
+    end = args.end_date
+    if end is None:
+        end = start
+    end += timedelta(days=1)
+    flags = args.mode | (AP if args.ap else 0)
+    data = get_past_data(start, end)
+    if args.json:
+        return data
+    out = '\x1b[96mdate       '
+    if flags & EARTH:
+        out += 'kp -  +  R-+ S-+ G-+ '
+        if flags & AP:
+            out += 'ap  -   +   '
+        if flags & HOUR:
+            out += '00 03 06 09 12 15 18 21 '.replace(' ', (' ap  ' if flags & AP else ' '))
+    if flags & SUN:
+        out += 'f10.7 spots area   +ars bgflux mxflux C  M  X  '
+        if flags & FLARES:
+            out += 'flares '
+        if flags & REGIONS:
+            out += 'regions '
+    out += '\x1b[0m\n'
+    for day, info in data.items():
+        avg_kp = util.average_kp(*info.kps)
+        out += f'{color(avg_kp, 'kp', display=False)}{day.strftime('%x'):<10} '
+        if flags & EARTH:
+            kps = util.sort_kps(*info.kps)
+            min_kp, max_kp = kps[0], kps[-1]
+            out += f'{color(avg_kp, 'kp', 2)} {color(min_kp, 'kp', 2)} {color(max_kp, 'kp', 2)} '
+            out += f'9{color(util.flux_to_r(info.bg_flux), 'rsg', 1)}'
+            out += f'{color(util.flux_to_r(info.max_flux), 'rsg', 1)} '
+            #out += f'{color(util.pfu_to_s(info.flux_p_10mev), 'rsg', 1)}99 '
+            out += '999 '
+            out += f'{color(util.kp_to_g(avg_kp), 'rsg', 1)}'
+            out += f'{color(util.kp_to_g(min_kp), 'rsg', 1)}'
+            out += f'{color(util.kp_to_g(max_kp), 'rsg', 1)} '
+            if flags & AP:
+                ap, min_ap, max_ap = round(sum(info.aps)/len(info.aps)), min(info.aps), max(info.aps)
+                out += f'{color(ap, 'ap', 3)}{color(min_ap, 'ap', 3)}{color(max_ap, 'ap', 3)}'
+            if flags & HOUR:
+                if flags & AP:
+                    for h_kp, h_ap in zip(info.kps, info.aps):
+                        out += f'{color(h_kp, 'kp', 2)} {h_ap:<3} '
+                else:
+                    for h_kp in info.kps:
+                        out += f'{color(h_kp, 'kp', 2)} '
+        if flags & SUN:
+            out += f'{color(info.spots, 'spots', 5)} {color(str(info.spot_area/100) + '%', 'spot_area', 6)} '
+            out += f'{color(info.f107, 'sfu', 5)} {color(info.new_regions, 'new_regions', 4)} '
+            out += f'{color(info.bg_flux, 'flux', 6)} {color(info.max_flux, 'flux', 6)} '
+            out += f'{color(info.c_flares, 'c_flare_count', 2)} '
+            out += f'{color(info.m_flares, 'm_flare_count', 2)} '
+            out += f'{color(info.x_flares, 'x_flare_count', 2)} '
+            if flags & FLARES:
+                pass
+            if flags & REGIONS:
+                pass
+    return out + '\n'
+
+def current(args: argparse.Namespace) -> dict | str:
+    return f'not implemented yet (args: {args!r})'
+
+
+ARCHIVE_CMDS = ('archive', 'history')
+CURRENT_CMDS = ('current', 'now')
+COMMANDS = ARCHIVE_CMDS + CURRENT_CMDS
+
 EARTH = 1
 HOUR = 2
 SUN = 4
@@ -96,12 +163,24 @@ def date(arg: str) -> ddate:
     except ValueError:
         raise argparse.ArgumentTypeError(f'not a valid date: {arg}') from None
 
+def command_or_date(arg: str) -> str | tuple[str, ddate]:
+    if arg in COMMANDS:
+        return arg
+    else:
+        raise argparse.ArgumentTypeError(f'not a valid command: {arg}')
+        # try:
+        #     return ('archive', date(arg))
+        # except argparse.ArgumentTypeError:
+        #     raise argparse.ArgumentTypeError(f'not a valid command or date: {arg}') from None
+
 parser = argparse.ArgumentParser(
     prog='spacew',
     description='outputs space weather information for date(s)',
 )
-parser.add_argument('date', nargs='?', action='store', type=date, default=str(ddate.today()), \
-                    help='the date to get data for (default is current date)')
+
+parser.add_argument('command', action='store', nargs='?', type=command_or_date, default='archive')
+parser.add_argument('start_date', nargs='?', action='store', type=date, \
+                    default=str(ddate.today()), help='the date to get data for (default is now)')
 parser.add_argument('end_date', nargs='?', action='store', type=date, help='the end date for a date range, ' + \
                     'when provided it gives all dates between date and this')
 parser.add_argument('mode', nargs='?', action='store', type=mode, default='default', \
@@ -115,76 +194,21 @@ parser.add_argument('-r', '--refresh', action='store_true', help='force data ref
                     '(done automatically if it has been more than an hour since data was cached)')
 parser.add_argument('-a', '-p', '-ap', '--ap', action='store_true', help='whether to output ap')
 
-args = parser.parse_args()
-start = args.date
-end = args.end_date
-if end is None:
-    end = start
-end += timedelta(days=1)
-flags = args.mode | (AP if args.ap else 0)
-data = get_past_data(start, end)
+arguments = parser.parse_args()
 
-if args.json:
-    pprint.pp({
+cmd = arguments.cmd
+if cmd in ARCHIVE_CMDS:
+    output = archive(arguments)
+elif cmd in CURRENT_CMDS:
+    output = current(arguments)
+
+if arguments.json or not isinstance(output, str):
+    pprint.pp(json.loads(json.dumps({
         'version': VERSION,
-        'mode': flags,
-        'data': data,
-    }, sort_dicts=False)
-    raise SystemExit(0)
-
-out = '\x1b[96mdate       '
-if flags & EARTH:
-    out += 'kp -  +  R-+ S-+ G-+ '
-    if flags & AP:
-        out += 'ap  -   +   '
-    if flags & HOUR:
-        out += '00 03 06 09 12 15 18 21 '.replace(' ', (' ap  ' if flags & AP else ' '))
-if flags & SUN:
-    out += 'f10.7 spots area   +ars bgflux mxflux C  M  X  '
-    if flags & FLARES:
-        out += 'flares '
-out += '\x1b[0m\n'
-
-for day, info in data.items():
-    avg_kp = util.average_kp(*info.kps)
-    out += f'{color(avg_kp, 'kp', display=False)}{day.strftime('%x'):<10} '
-    if flags & EARTH:
-        kps = util.sort_kps(*info.kps)
-        min_kp = kps[0]
-        max_kp = kps[-1]
-        out += f'{color(avg_kp, 'kp', 2)} {color(min_kp, 'kp', 2)} {color(max_kp, 'kp', 2)} '
-        out += f'9{color(util.flux_to_r(info.bg_flux), 'rsg', 1)}'
-        out += f'{color(util.flux_to_r(info.max_flux), 'rsg', 1)} '
-        #out += f'{color(util.pfu_to_s(info.flux_p_10mev), 'rsg', 1)}99 '
-        out += '999 '
-        out += f'{color(util.kp_to_g(avg_kp), 'rsg', 1)}'
-        out += f'{color(util.kp_to_g(min_kp), 'rsg', 1)}'
-        out += f'{color(util.kp_to_g(max_kp), 'rsg', 1)} '
-        if flags & AP:
-            ap = round(sum(info.aps)/len(info.aps))
-            min_ap = min(info.aps)
-            max_ap = max(info.aps)
-            out += f'{color(ap, 'ap', 3)}{color(min_ap, 'ap', 3)}{color(max_ap, 'ap', 3)}'
-        if flags & HOUR:
-            if flags & AP:
-                for h_kp, h_ap in zip(info.kps, info.aps):
-                    out += f'{color(h_kp, 'kp', 2)} {h_ap:<3} '
-            else:
-                for h_kp in info.kps:
-                    out += f'{color(h_kp, 'kp', 2)} '
-    if flags & SUN:
-        out += f'{color(info.f107, 'sfu', 5)} {color(info.spots, 'spots', 5)} '
-        out += f'{color(info.spot_area, 'spot_area', 6)} {color(info.new_regions, 'new_regions', 4)} '
-        out += f'{color(info.bg_flux, 'flux', 6)} {color(info.max_flux, 'flux', 6)} '
-        out += f'{color(info.c_flares, 'c_flare_count', 2)} '
-        out += f'{color(info.m_flares, 'm_flare_count', 2)} '
-        out += f'{color(info.x_flares, 'x_flare_count', 2)} '
-        if flags & FLARES:
-            pass
-        if flags & REGIONS:
-            pass
-    out += '\n'
-
-if args.nocolor:
-    out = ANSI_ESCAPE.sub('', out)
-print(out)
+        'args': vars(arguments),
+        'data': output,
+    })), sort_dicts=False)
+else:
+    if arguments.nocolor:
+        output = re.sub(r'\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', output)
+    print(output)

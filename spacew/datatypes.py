@@ -50,8 +50,8 @@ class DayData:
     g_min: RSG = -1
     g_max: RSG = -1
     spots: int = -1
+    spot_area: float = -1
     f107: int = -1
-    spot_area: int = -1
     new_regions: int = -1
     bg_flux: Flux = ''
     max_flux: Flux = ''
