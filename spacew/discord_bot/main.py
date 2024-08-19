@@ -8,7 +8,7 @@ import sys
 import discord
 from discord.ext import tasks
 from . import config as config_parser
-from .. import current_data
+from .. import now
 
 
 config = config_parser.load()
@@ -44,11 +44,11 @@ async def on_message(message):
     #     await message.channel.send('Hello!')
 
 
-now = current_data.get()
+current = now.get()
 @tasks.loop(seconds=14)
 async def set_now():
-    global now
-    now = current_data.get()
+    global current
+    current = now.get()
 
 
 config.status_message = """```

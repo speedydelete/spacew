@@ -6,8 +6,8 @@ from datetime import date, timedelta
 import pickle
 import os
 from .datatypes import RSG, Flux, Kp, Ap, Region, Flare, DayData, CurrentData, MultiDayData
-from .past_data import get as _get_past_data
-from .current_data import get as get_current_data
+from .past import get as _get_past_data
+from .now import get as get_current_data
 
 __all__ = ['RSG', 'Flux', 'Kp', 'Ap', 'Region', 'Flare', 'DayData', 'CurrentData', 'MultiDayData', \
            'get_cache', 'set_cache', 'get_past_data', 'get_current_data']
