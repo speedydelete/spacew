@@ -72,7 +72,7 @@ def archive(args: argparse.Namespace) -> dict | str:
         end = start
     end += timedelta(days=1)
     flags = args.mode | (AP if args.ap else 0)
-    data = get_past_data(start, end, use_cache=False, add_to_cache=False)
+    data = get_past_data(start, end, args.refresh, args.cache)
     if args.json:
         return data
     out = '\x1b[96mdate       '
@@ -193,9 +193,9 @@ parser.add_argument('-m', '--mode', action='store', dest='mode', type=mode, defa
                     help='the data to output (default|sun|earth|all)')
 parser.add_argument('-v', '--version', action='version', version=VERSION, help='print the version')
 parser.add_argument('-j', '--json', action='store_true', help='output json')
-parser.add_argument('-c', '--nocolor', '--no-color', action='store_true', help='disable color output')
-parser.add_argument('-r', '--refresh', action='store_true', help='force data refresh instead of loading from cache ' + \
-                    '(done automatically if it has been more than an hour since data was cached)')
+parser.add_argument('-n', '--nocolor', '--no-color', action='store_true', help='disable color output')
+parser.add_argument('-r', '--refresh', action='store_true', help='force data refresh instead of loading from cache')
+parser.add_argument('-c', '--cache', action='store_false', help='disable auto saving to cache')
 parser.add_argument('-a', '-p', '-ap', '--ap', action='store_true', help='whether to output ap')
 
 arguments = parser.parse_args()
