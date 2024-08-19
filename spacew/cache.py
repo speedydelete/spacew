@@ -45,4 +45,7 @@ def get_past_data(start: date, end: date | None = None, use_cache: bool = True, 
             data |= _get_past_data(date(day.year, 1, 1), date(day.year + 1, 1, 1))
     if add_to_cache:
         set_cache(get_cache() | data)
+    for day in list(data.keys()):
+        if not start <= day < end:
+            del data[day]
     return data

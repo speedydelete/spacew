@@ -63,7 +63,7 @@ def average_kp(*kps: Kp) -> Kp:
 
 def sort_kps(*args: Kp) -> tuple[Kp, ...]:
     kps = list(args)
-    kps.sort(key=float_to_kp)
+    kps.sort(key=kp_to_float)
     return tuple(kps)
 
 
@@ -85,6 +85,8 @@ def compare_flux(flux1: Flux, flux2: Flux, op: Operation) -> bool:
     return eval(str(x) + op + str(y))
 
 def flux_to_r(flux: Flux) -> RSG:
+    if flux == '':
+        return 0
     letter = flux[0]
     number = float(flux[1:])
     if letter == 'X':

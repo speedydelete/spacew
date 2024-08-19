@@ -28,6 +28,8 @@ def get_kp_ap_data(start: date, end: date | None = None) -> MultiDayData:
     for i, day in enumerate(preds):
         for hour in day:
             dd = today + timedelta(days=i)
+            if dd >= end:
+                continue
             data.append([str(dd.year).zfill(4), str(dd.month).zfill(2), str(dd.day).zfill(2), \
                         '0', '0', '0', '0', hour, str(util.kp_to_ap(util.float_to_kp(hour))), '0'])
     out = {}
@@ -74,7 +76,7 @@ def get_solar_data(start: date, end: date | None = None) -> MultiDayData:
     if end is None:
         end = start + timedelta(days=1)
     out = {}
-    for _year in range(start.year - end.year + 1):
+    for _year in range(end.year - start.year):
         year = start.year + _year
         data = get_solar_data_same_year(date(year, 1, 1), date(year + 1, 1, 1))
         for key, value in data.items():
@@ -86,13 +88,16 @@ def get_solar_data(start: date, end: date | None = None) -> MultiDayData:
 def get(start: date, end: date | None = None) -> MultiDayData:
     if end is None:
         end = start + timedelta(days=1)
-    out = {}
+    out: MultiDayData = {}
     day = start
     while day < end:
         out[day] = DayData()
         day += timedelta(days=1)
     data = (get_kp_ap_data(start, end), get_solar_data(start, end))
+    blank = asdict(DayData())
     for item in data:
         for key, value in item.items():
-            out[key] = DayData(**(asdict(out[key]) | asdict(value)))
+            for k, v in asdict(value).items():
+                if getattr(out[key], k) == blank[k]:
+                    setattr(out[key], k, v)
     return out

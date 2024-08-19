@@ -2,7 +2,7 @@
 '''spacew command line interface'''
 
 from typing import Any, Callable
-from datetime import date as ddate, timedelta
+from datetime import date as date, timedelta
 import math
 import re
 import json
@@ -28,10 +28,12 @@ KP_COLOR = {
     '9-': '31', '9': '31', '9+': '31',
 }
 
-RSG_COLOR = {0: '39', 1: '32', 2: '92', 3: '93', 4: '31', 5: '31'}
+RSG_COLOR = {-1: '39', 0: '39', 1: '32', 2: '92', 3: '93', 4: '31', 5: '31'}
 
 def color_log_scale(mul: int | float, add: int | float = 0) -> Callable:
     def wrapper(value: int | float):
+        if value < 0:
+            return RSG_COLOR[0]
         return RSG_COLOR[util.pfu_to_s(math.exp(math.log(value)*mul+add))]
     return wrapper
 
@@ -41,7 +43,7 @@ COLOR = {
     'rsg': RSG_COLOR.get,
     'sfu': color_log_scale(1.45),
     'spots': color_log_scale(1.45),
-    'spot_area': color_log_scale(1.45, -2.3),
+    'spot_area': lambda area: color_log_scale(1.25, -2.3)(area*2000000),
     'new_regions': RSG_COLOR.get,
     'flux': lambda flux: RSG_COLOR[util.flux_to_r(flux)],
     'c_flare_count': lambda count: RSG_COLOR[util.flux_to_r('C' + str(count))],
@@ -49,26 +51,28 @@ COLOR = {
     'x_flare_count': lambda count: RSG_COLOR[util.flux_to_r('X' + str(count))],
 }
 
-def color(value: Any, map_name: str, width: int | None = None, display: bool = True, reset: bool = True) -> str:
+def color(value: Any, map_name: str, width: int | None = None, actual: str | None = None, \
+          display: bool = True, reset: bool = True) -> str:
+    if actual is None:
+        actual = str(value)
     after = ''
     if display:
         if width is not None:
-            after = f'{str(value).ljust(width)}'
+            after = f'{actual.ljust(width)}'
         else:
-            after = f'{value}'
+            after = f'{actual}'
         if reset:
             after += '\x1b[0m'
     return f'\x1b[{COLOR[map_name](value)}m{after}'
 
 
 def archive(args: argparse.Namespace) -> dict | str:
-    start = args.date
-    end = args.end_date
+    start, end = args.start_date, args.end_date
     if end is None:
         end = start
     end += timedelta(days=1)
     flags = args.mode | (AP if args.ap else 0)
-    data = get_past_data(start, end)
+    data = get_past_data(start, end, use_cache=False, add_to_cache=False)
     if args.json:
         return data
     out = '\x1b[96mdate       '
@@ -79,7 +83,7 @@ def archive(args: argparse.Namespace) -> dict | str:
         if flags & HOUR:
             out += '00 03 06 09 12 15 18 21 '.replace(' ', (' ap  ' if flags & AP else ' '))
     if flags & SUN:
-        out += 'f10.7 spots area   +ars bgflux mxflux C  M  X  '
+        out += 'spots area    f10.7 +ars bgflux mxflux C  M  X  '
         if flags & FLARES:
             out += 'flares '
         if flags & REGIONS:
@@ -110,7 +114,8 @@ def archive(args: argparse.Namespace) -> dict | str:
                     for h_kp in info.kps:
                         out += f'{color(h_kp, 'kp', 2)} '
         if flags & SUN:
-            out += f'{color(info.spots, 'spots', 5)} {color(str(info.spot_area/100) + '%', 'spot_area', 6)} '
+            spot_area = f'{format(info.spot_area*100, f'<6.{math.ceil(-math.log(info.spot_area*100))}f').rstrip()}%'
+            out += f'{color(info.spots, 'spots', 5)} {color(info.spot_area, 'spot_area', 7, actual=spot_area)} '
             out += f'{color(info.f107, 'sfu', 5)} {color(info.new_regions, 'new_regions', 4)} '
             out += f'{color(info.bg_flux, 'flux', 6)} {color(info.max_flux, 'flux', 6)} '
             out += f'{color(info.c_flares, 'c_flare_count', 2)} '
@@ -157,31 +162,30 @@ def mode(arg: str) -> int:
                     return v
             raise argparse.ArgumentTypeError(f'not a valid mode: {o_arg}') from None
 
-def date(arg: str) -> ddate:
+def date_arg(arg: str) -> date:
     try:
         return dateutil.parser.parse(arg).date() # type: ignore
     except ValueError:
         raise argparse.ArgumentTypeError(f'not a valid date: {arg}') from None
 
-def command_or_date(arg: str) -> str | tuple[str, ddate]:
+def command_or_date(arg: str) -> str | tuple[str, date]:
     if arg in COMMANDS:
         return arg
     else:
-        raise argparse.ArgumentTypeError(f'not a valid command: {arg}')
-        # try:
-        #     return ('archive', date(arg))
-        # except argparse.ArgumentTypeError:
-        #     raise argparse.ArgumentTypeError(f'not a valid command or date: {arg}') from None
+        try:
+            return ('archive', date_arg(arg))
+        except argparse.ArgumentTypeError:
+            raise argparse.ArgumentTypeError(f'not a valid command or date: {arg}') from None
 
 parser = argparse.ArgumentParser(
     prog='spacew',
     description='outputs space weather information for date(s)',
 )
 
-parser.add_argument('command', action='store', nargs='?', type=command_or_date, default='archive')
-parser.add_argument('start_date', nargs='?', action='store', type=date, \
-                    default=str(ddate.today()), help='the date to get data for (default is now)')
-parser.add_argument('end_date', nargs='?', action='store', type=date, help='the end date for a date range, ' + \
+parser.add_argument('command_or_date', action='store', nargs='?', type=command_or_date, default='archive')
+parser.add_argument('start_date', nargs='?', action='store', type=date_arg, \
+                    default=str(date.today()), help='the date to get data for (default is now)')
+parser.add_argument('end_date', nargs='?', action='store', type=date_arg, help='the end date for a date range, ' + \
                     'when provided it gives all dates between date and this')
 parser.add_argument('mode', nargs='?', action='store', type=mode, default='default', \
                     help='the data to output (default|sun|earth|all)')
@@ -196,7 +200,10 @@ parser.add_argument('-a', '-p', '-ap', '--ap', action='store_true', help='whethe
 
 arguments = parser.parse_args()
 
-cmd = arguments.cmd
+cmd = arguments.command_or_date
+if isinstance(cmd, tuple):
+    arguments.cmd, arguments.start_date = cmd
+    cmd = arguments.cmd
 if cmd in ARCHIVE_CMDS:
     output = archive(arguments)
 elif cmd in CURRENT_CMDS:
