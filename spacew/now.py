@@ -2,9 +2,9 @@
 '''current space weather data'''
 
 from datetime import datetime, date, timedelta
-from .datatypes import RSG, Kp, Ap, CurrentData
-from . import util
-from .apis import request, request_json, load_txt_data
+from datatypes import RSG, Kp, Ap, CurrentData
+import util
+from apis import request, request_json, load_txt_data
 
 
 def curr_noaa_scales() -> tuple[RSG, RSG, RSG]:

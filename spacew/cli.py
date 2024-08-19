@@ -9,8 +9,8 @@ import json
 import pprint
 import argparse
 import dateutil
-from .cache import get_past_data
-from . import util
+from cache import get_past_data
+import util
 
 
 VERSION = '1.0'

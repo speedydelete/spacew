@@ -5,7 +5,7 @@
 
 from typing import Literal
 import math
-from .datatypes import Kp, Ap, RSG, Flux
+from datatypes import Kp, Ap, RSG, Flux
 
 
 type Operation = Literal['==', '!=', '>', '>=', '<', '<=']

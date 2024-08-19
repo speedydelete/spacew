@@ -33,9 +33,9 @@ class Region:
 class Flare:
     '''solar flare data'''
     flux: str = ''
-    start: time = time(-1, -1, -1)
-    maximum: time = time(-1, -1, -1)
-    end: time = time(-1, 1, -1)
+    start: time | None = None
+    maximum: time | None = None
+    end: time | None = None
 
 @dataclass
 class DayData:

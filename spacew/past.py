@@ -3,9 +3,9 @@
 
 from datetime import date, timedelta
 from dataclasses import asdict
-from .datatypes import DayData, MultiDayData
-from . import util
-from .apis import request, get_swpc_ftp_file, load_txt_data
+from datatypes import DayData, MultiDayData
+import util
+from apis import request, get_swpc_ftp_file, load_txt_data
 
 
 def get_kp_ap_data(start: date, end: date | None = None) -> MultiDayData:

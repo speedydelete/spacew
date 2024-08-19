@@ -4,8 +4,8 @@
 from datetime import date, timedelta
 import pickle
 import os
-from .datatypes import MultiDayData
-from .past import get as _get_past_data
+from datatypes import MultiDayData
+from past import get as _get_past_data
 
 
 CACHE_PATH = os.path.expanduser('~/.spacew_cache')
