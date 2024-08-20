@@ -119,7 +119,10 @@ def regions() -> CurrentData:
     regions = {region.id: region for region in regions}
     regions = list(regions.values())
     regions.sort(key = lambda region: -region.id)
-    return CurrentData(regions = regions)
+    return CurrentData(
+        regions = regions,
+        spot_area = sum(region.area for region in regions),
+    )
 
 def rotation() -> CurrentData:
     # CR 2226 started on 2023-1-1 at 9:10 utc

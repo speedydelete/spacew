@@ -53,18 +53,17 @@ COLOR = {
 }
 
 def color(value: Any, map_name: str, width: int | None = None, actual: str | None = None, \
-          display: bool = True, reset: bool = True) -> str:
+          display: bool = True, reset: bool = True, before: str = '') -> str:
     if actual is None:
         actual = str(value)
-    after = ''
+    text = ''
     if display:
+        text = before + actual
         if width is not None:
-            after = f'{actual.ljust(width)}'
-        else:
-            after = f'{actual}'
+            text = text.ljust(width)
         if reset:
-            after += '\x1b[0m'
-    return f'\x1b[{COLOR[map_name](value)}m{after}'
+            text += '\x1b[0m'
+    return f'\x1b[{COLOR[map_name](value)}m{text}'
 
 
 def archive(args: argparse.Namespace) -> dict | str:
@@ -130,11 +129,21 @@ def archive(args: argparse.Namespace) -> dict | str:
 
 def current(args: argparse.Namespace) -> dict | str:
     from dataclasses import asdict
-    data = get_current_data()
+    info = get_current_data()
     if args.json:
-        return asdict(data)
-    out = f'space weather conditions on {data.dt.strftime('%Y-%m-%d %H:%M:%S')}'
+        return asdict(info)
+    out = f'space weather conditions at {info.dt.strftime('%Y-%m-%d %H:%M:%S')}\n'
+    out += f'{color(info.r, 'rsg', before='R')} '
+    out += f'{color(info.s, 'rsg', before='S')} '
+    out += f'{color(info.g, 'rsg', before='G')} '
+    out += f'(24 hour maxes: {color(info.r_24h_max, 'rsg', before='R')} '
+    out += f'{color(info.s_24h_max, 'rsg', before='S')} '
+    out += f'{color(info.g_24h_max, 'rsg', before='G')})\n'
     flags = args.mode | (AP if args.ap else 0)
+    if flags & EARTH:
+        out += f'Kp: {color(info.kp, 'kp')} {f'(ap: {color(info.ap, 'ap')})' if flags & AP else ''}\n'
+    if flags & SUN:
+        out += f'{color(info.sunspots, 'sunspots')} sunspots ({color(info.spot_area, 'spot_area', actual=str(info.spot_area*100))})'
     return out
 
 
