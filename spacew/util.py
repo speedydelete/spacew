@@ -5,7 +5,8 @@
 
 from typing import Literal
 import math
-from datatypes import Kp, Ap, RSG, Flux
+from dataclasses import asdict
+from datatypes import Kp, Ap, RSG, Flux, BaseData, MultiDayData
 
 
 type Operation = Literal['==', '!=', '>', '>=', '<', '<=']
@@ -99,3 +100,20 @@ def flux_to_r(flux: Flux) -> RSG:
 
 def pfu_to_s(pfu):
     return min(5, math.floor(math.log10(pfu)))
+
+
+def merge_data(first: BaseData, *datas: BaseData) -> BaseData:
+    if not all(isinstance(data, type(first)) for data in datas):
+        raise TypeError('all arguments of merge_data must be of the same type')
+    blank = type(first)()
+    for data in datas:
+        for key, value in asdict(data).items():
+            if value != getattr(blank, key):
+                setattr(first, key, value)
+    return first
+
+def merge_multi_day_data(first: MultiDayData, *datas: MultiDayData) -> MultiDayData:
+    for key in vars(first):
+        filtered = [getattr(data, key) for data in datas]
+        setattr(first, key, merge_data(getattr(first, key), *filtered))
+    return first

@@ -9,6 +9,8 @@ import requests
 
 
 def _request(uri: str) -> requests.Response:
+    if not uri.startswith('http'):
+        uri = 'https://services.swpc.noaa.gov/' + uri
     req = requests.get(uri, timeout=3)
     if req.status_code < 400:
         return req
@@ -19,9 +21,9 @@ def request(uri: str) -> str:
     return _request(uri).text
 
 def request_json(uri: str) -> Any:
-    return _request(uri).json
+    return _request(uri).json()
 
-def get_swpc_ftp_file(file: str, encoding: str='utf-8') -> str:
+def swpc_ftp_file(file: str, encoding: str='utf-8') -> str:
     '''retrieves a file using ftp from swpc'''
     fdir, file = os.path.split(file)
     ftp = ftplib.FTP('ftp.swpc.noaa.gov', encoding=encoding)

@@ -5,10 +5,10 @@ from datetime import date, timedelta
 from dataclasses import asdict
 from datatypes import DayData, MultiDayData
 import util
-from apis import request, get_swpc_ftp_file, load_txt_data
+from apis import request, swpc_ftp_file, load_txt_data
 
 
-def get_kp_ap_data(start: date, end: date | None = None) -> MultiDayData:
+def kp_ap(start: date, end: date | None = None) -> MultiDayData:
     '''gets the kp/ap values for certain date(s)'''
     if end is None:
         end = start + timedelta(days=1)
@@ -43,19 +43,19 @@ def get_kp_ap_data(start: date, end: date | None = None) -> MultiDayData:
     return out
 
 
-def get_solar_data_same_year(start: date, end: date | None = None) -> MultiDayData:
+def solar_same_year(start: date, end: date | None = None) -> MultiDayData:
     '''gets data on the sun's activity for date(s) (must be the same year)'''
     if end is None:
         end = start + timedelta(days=1)
     out = {}
     if end.year < date.today().year:
-        data = get_swpc_ftp_file(f'pub/warehouse/{start.year}/{start.year}_DSD.txt')
+        data = swpc_ftp_file(f'pub/warehouse/{start.year}/{start.year}_DSD.txt')
         data = load_txt_data(data, start, end, date(start.year, 1, 1))
         for line in data:
             key = date.fromisoformat('-'.join(line[:3]))
             out[key] = DayData(
                 f107 = int(line[3]),
-                spots = int(line[4]),
+                sn = int(line[4]),
                 spot_area = int(line[5])/2000000,
                 new_regions = int(line[6]),
                 bg_flux = str(line[8]),
@@ -71,14 +71,14 @@ def get_solar_data_same_year(start: date, end: date | None = None) -> MultiDayDa
         pass
     return out
 
-def get_solar_data(start: date, end: date | None = None) -> MultiDayData:
+def solar(start: date, end: date | None = None) -> MultiDayData:
     '''gets data on the sun's activity for date(s)'''
     if end is None:
         end = start + timedelta(days=1)
     out = {}
     for _year in range(end.year - start.year):
         year = start.year + _year
-        data = get_solar_data_same_year(date(year, 1, 1), date(year + 1, 1, 1))
+        data = solar_same_year(date(year, 1, 1), date(year + 1, 1, 1))
         for key, value in data.items():
             if key >= start and key < end:
                 out[key] = value
@@ -88,16 +88,7 @@ def get_solar_data(start: date, end: date | None = None) -> MultiDayData:
 def get(start: date, end: date | None = None) -> MultiDayData:
     if end is None:
         end = start + timedelta(days=1)
-    out: MultiDayData = {}
-    day = start
-    while day < end:
-        out[day] = DayData()
-        day += timedelta(days=1)
-    data = (get_kp_ap_data(start, end), get_solar_data(start, end))
-    blank = asdict(DayData())
-    for item in data:
-        for key, value in item.items():
-            for k, v in asdict(value).items():
-                if getattr(out[key], k) == blank[k]:
-                    setattr(out[key], k, v)
-    return out
+    return util.merge_multi_day_data(
+        kp_ap(start, end),
+        solar(start, end),
+    )

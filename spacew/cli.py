@@ -10,6 +10,7 @@ import pprint
 import argparse
 import dateutil
 from cache import get_past_data
+from now import get as get_current_data
 import util
 
 
@@ -42,7 +43,7 @@ COLOR = {
     'ap': lambda ap: KP_COLOR[util.ap_to_kp(ap)],
     'rsg': RSG_COLOR.get,
     'sfu': color_log_scale(1.45),
-    'spots': color_log_scale(1.45),
+    'sn': color_log_scale(1.45),
     'spot_area': lambda area: color_log_scale(1.25, -2.3)(area*2000000),
     'new_regions': RSG_COLOR.get,
     'flux': lambda flux: RSG_COLOR[util.flux_to_r(flux)],
@@ -83,7 +84,7 @@ def archive(args: argparse.Namespace) -> dict | str:
         if flags & HOUR:
             out += '00 03 06 09 12 15 18 21 '.replace(' ', (' ap  ' if flags & AP else ' '))
     if flags & SUN:
-        out += 'spots area    f10.7 +ars bgflux mxflux C  M  X  '
+        out += 'sn area    f10.7 +ars bgflux mxflux C  M  X  '
         if flags & FLARES:
             out += 'flares '
         if flags & REGIONS:
@@ -115,7 +116,7 @@ def archive(args: argparse.Namespace) -> dict | str:
                         out += f'{color(h_kp, 'kp', 2)} '
         if flags & SUN:
             spot_area = f'{format(info.spot_area*100, f'<6.{math.ceil(-math.log(info.spot_area*100))}f').rstrip()}%'
-            out += f'{color(info.spots, 'spots', 5)} {color(info.spot_area, 'spot_area', 7, actual=spot_area)} '
+            out += f'{color(info.sn, 'sn', 5)} {color(info.spot_area, 'spot_area', 7, actual=spot_area)} '
             out += f'{color(info.f107, 'sfu', 5)} {color(info.new_regions, 'new_regions', 4)} '
             out += f'{color(info.bg_flux, 'flux', 6)} {color(info.max_flux, 'flux', 6)} '
             out += f'{color(info.c_flares, 'c_flare_count', 2)} '
@@ -128,7 +129,8 @@ def archive(args: argparse.Namespace) -> dict | str:
     return out + '\n'
 
 def current(args: argparse.Namespace) -> dict | str:
-    return f'not implemented yet (args: {args!r})'
+    from dataclasses import asdict
+    return pprint.pformat(asdict(get_current_data()), sort_dicts=False)
 
 
 ARCHIVE_CMDS = ('archive', 'history', 'on')
@@ -182,9 +184,9 @@ parser = argparse.ArgumentParser(
     description='outputs space weather information for date(s)',
 )
 
-parser.add_argument('command_or_date', action='store', nargs='?', type=command_or_date, default='archive')
+parser.add_argument('command_or_date', action='store', nargs='?', type=command_or_date, default='now')
 parser.add_argument('start_date', nargs='?', action='store', type=date_arg, \
-                    default=str(date.today()), help='the date to get data for (default is now)')
+                    default=str(date.today()), help='the date to get data for (default is today)')
 parser.add_argument('end_date', nargs='?', action='store', type=date_arg, help='the end date for a date range, ' + \
                     'when provided it gives all dates between date and this')
 parser.add_argument('mode', nargs='?', action='store', type=mode, default='default', \
