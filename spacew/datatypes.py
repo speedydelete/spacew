@@ -53,6 +53,8 @@ class DayData(BaseData):
     g_avg: RSG = -1
     g_min: RSG = -1
     g_max: RSG = -1
+    kps: Sequence[Kp] = ()
+    aps: Sequence[Ap] = ()
     sn: int = -1
     spot_area: float = -1
     f107: float = -1
@@ -64,8 +66,6 @@ class DayData(BaseData):
     x_flares: int = -1
     regions: Sequence[Region] = ()
     flares: Sequence[Flare] = ()
-    kps: Sequence[Kp] = ()
-    aps: Sequence[Ap] = ()
 
 @dataclass
 class CurrentData(BaseData):
@@ -77,6 +77,8 @@ class CurrentData(BaseData):
     s_24h_max: int = -1
     g: int = -1
     g_24h_max: int = -1
+    kp: Kp = '-1'
+    ap: int = -1
     sn: int = -1
     f107: float = -1.0
     spot_area: float = -1.0
@@ -95,8 +97,6 @@ class CurrentData(BaseData):
     bt: float = -1
     bz: float = -1
     dst: float = -1
-    kp: Kp = '-1'
-    ap: int = -1
 
 
 type MultiDayData = dict[date, DayData]

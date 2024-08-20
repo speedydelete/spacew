@@ -10,12 +10,12 @@ from apis import request, request_json, load_txt_data
 def noaa_scales() -> CurrentData:
     data = request_json('products/noaa-scales.json')
     return CurrentData(
-        r = data['0']['R']['Scale'],
-        r_24h_max = data['-1']['R']['Scale'],
-        s = data['0']['S']['Scale'],
-        s_24h_max = data['-1']['S']['Scale'],
-        g = data['0']['G']['Scale'],
-        g_24h_max = data['-1']['G']['Scale'],
+        r = int(data['0']['R']['Scale']),
+        r_24h_max = int(data['-1']['R']['Scale']),
+        s = int(data['0']['S']['Scale']),
+        s_24h_max = int(data['-1']['S']['Scale']),
+        g = int(data['0']['G']['Scale']),
+        g_24h_max = int(data['-1']['G']['Scale']),
     )
 
 def kp_ap() -> CurrentData:
@@ -28,12 +28,16 @@ def kp_ap() -> CurrentData:
 
 def solar() -> CurrentData:
     solar_wind = request_json('products/geospace/propagated-solar-wind-1-hour.json')[-1]
+    if solar_wind[6] is None:
+        solar_wind[6] = -1
+    if solar_wind[7] is None:
+        solar_wind[7] = -1
     return CurrentData(
-        f107 = request_json('products/summary/10cm-flux.json')['Flux'],
-        wind_speed = solar_wind[1],
-        wind_density = solar_wind[2],
-        bt = solar_wind[7],
-        bz = solar_wind[6],
+        f107 = int(request_json('products/summary/10cm-flux.json')['Flux']),
+        wind_speed = float(solar_wind[1]),
+        wind_density = float(solar_wind[2]),
+        bt = float(solar_wind[7]),
+        bz = float(solar_wind[6]),
     )
 
 def goes() -> CurrentData:
