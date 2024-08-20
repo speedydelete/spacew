@@ -36,10 +36,12 @@ class Region(BaseData):
 @dataclass
 class Flare(BaseData):
     '''solar flare data'''
-    flux: str = ''
-    start: time | None = None
-    maximum: time | None = None
-    end: time | None = None
+    start_time: datetime = datetime(9999, 12, 31)
+    start_flux: str = ''
+    max_time: datetime = datetime(9999, 12, 31)
+    max_flux: str = ''
+    end_time: datetime = datetime(9999, 12, 31)
+    end_flux: str = ''
 
 @dataclass
 class DayData(BaseData):
@@ -55,7 +57,7 @@ class DayData(BaseData):
     g_max: RSG = -1
     kps: Sequence[Kp] = ()
     aps: Sequence[Ap] = ()
-    sn: int = -1
+    sunspots: int = -1
     spot_area: float = -1
     f107: float = -1
     new_regions: int = -1
@@ -79,7 +81,7 @@ class CurrentData(BaseData):
     g_24h_max: int = -1
     kp: Kp = '-1'
     ap: int = -1
-    sn: int = -1
+    sunspots: int = -1
     f107: float = -1.0
     spot_area: float = -1.0
     new_regions: int = -1

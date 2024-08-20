@@ -2,7 +2,7 @@
 '''current space weather data'''
 
 from datetime import datetime, date, timedelta, timezone
-from datatypes import BaseData, CurrentData
+from datatypes import BaseData, Flare, CurrentData
 import util
 from apis import request, request_json, load_txt_data
 
@@ -33,6 +33,7 @@ def solar() -> CurrentData:
     if solar_wind[7] is None:
         solar_wind[7] = -1
     return CurrentData(
+        sunspots = int(request('https://www.sidc.be/SILSO/DATA/EISN/EISN_current.txt').split('\n')[-2][20:23]),
         f107 = int(request_json('products/summary/10cm-flux.json')['Flux']),
         wind_speed = float(solar_wind[1]),
         wind_density = float(solar_wind[2]),
@@ -40,18 +41,43 @@ def solar() -> CurrentData:
         bz = float(solar_wind[6]),
     )
 
-def goes() -> CurrentData:
+def flares() -> CurrentData:
     dt_now = datetime.now(tz=timezone.utc)
     flux_now = request_json('json/goes/primary/xray-flares-latest.json')[0]['current_class']
-    flux_maxes = request_json('json/goes/primary/xray-flares-7-day.json')
-    flux_maxes = [(datetime.fromisoformat(flux['max_time']), flux['max_class']) for flux in flux_maxes]
-    flux_maxes = [flux for flux in flux_maxes if (dt_now - flux[0]).days == 0]
-    flux_24h_max = max((flux[1] for flux in flux_maxes), key=util.flux_to_float)
-    flux_2h_max = max((flux[1] for flux in flux_maxes if (dt_now - flux[0]).seconds < 7200), key=util.flux_to_float)
+    flares = request_json('json/goes/primary/xray-flares-7-day.json')
+    flares = [Flare(
+        start_time=datetime.fromisoformat(flare['begin_time']),
+        start_flux=flare['begin_class'],
+        max_time=datetime.fromisoformat(flare['max_time']),
+        max_flux=flare['max_class'],
+        end_time=datetime.fromisoformat(flare['end_time']),
+        end_flux=flare['end_class'],
+    ) for flare in flares if (dt_now - datetime.fromisoformat(flare['begin_time'])).days == 0]
+    flux_24h_max = flux_now
+    flux_2h_max = flux_now
+    c_flares = 0
+    m_flares = 0
+    x_flares = 0
+    for flare in flares:
+        match flare.max_flux[0]:
+            case 'C':
+                c_flares += 1
+            case 'M':
+                m_flares += 1
+            case 'X':
+                x_flares += 1
+        if (dt_now - flare.max_time).days == 0 and util.compare_flux(flux_24h_max, flare.max_flux, '<'):
+            flux_24h_max = flare.max_flux
+        if (dt_now - flare.max_time).seconds < 7200 and util.compare_flux(flux_2h_max, flare.max_flux, '<'):
+            flux_2h_max = flare.max_flux
     return CurrentData(
         flux = flux_now,
         flux_24h_max = flux_24h_max,
         flux_2h_max = flux_2h_max,
+        c_flares = c_flares,
+        m_flares = m_flares,
+        x_flares = x_flares,
+        flares = flares,
     )
 
 def rotation() -> CurrentData:
@@ -73,7 +99,7 @@ def _get() -> BaseData:
         CurrentData(dt=datetime.now()),
         noaa_scales(),
         kp_ap(),
-        goes(),
+        flares(),
         solar(),
         rotation(),
     )
