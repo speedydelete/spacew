@@ -8,7 +8,7 @@ from apis import request, request_json, load_txt_data
 
 
 def noaa_scales() -> CurrentData:
-    data = request_json('products/noaa-scales.json')['0']
+    data = request_json('products/noaa-scales.json')
     return CurrentData(
         r = data['0']['R']['Scale'],
         r_24h_max = data['-1']['R']['Scale'],
@@ -38,7 +38,7 @@ def solar() -> CurrentData:
 
 def goes() -> CurrentData:
     return CurrentData(
-        flux = request('json/goes/primary/xray-flares-latest.json')[0]['current_class'], # type: ignore
+        flux = request_json('json/goes/primary/xray-flares-latest.json')[0]['current_class'],
     )
 
 def rotation() -> CurrentData:
