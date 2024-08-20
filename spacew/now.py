@@ -1,7 +1,7 @@
 
 '''current space weather data'''
 
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from datatypes import BaseData, CurrentData
 import util
 from apis import request, request_json, load_txt_data
@@ -41,8 +41,17 @@ def solar() -> CurrentData:
     )
 
 def goes() -> CurrentData:
+    dt_now = datetime.now(tz=timezone.utc)
+    flux_now = request_json('json/goes/primary/xray-flares-latest.json')[0]['current_class']
+    flux_maxes = request_json('json/goes/primary/xray-flares-7-day.json')
+    flux_maxes = [(datetime.fromisoformat(flux['max_time']), flux['max_class']) for flux in flux_maxes]
+    flux_maxes = [flux for flux in flux_maxes if (dt_now - flux[0]).days == 0]
+    flux_24h_max = max((flux[1] for flux in flux_maxes), key=util.flux_to_float)
+    flux_2h_max = max((flux[1] for flux in flux_maxes if (dt_now - flux[0]).seconds < 7200), key=util.flux_to_float)
     return CurrentData(
-        flux = request_json('json/goes/primary/xray-flares-latest.json')[0]['current_class'],
+        flux = flux_now,
+        flux_24h_max = flux_24h_max,
+        flux_2h_max = flux_2h_max,
     )
 
 def rotation() -> CurrentData:
