@@ -43,7 +43,7 @@ COLOR = {
     'ap': lambda ap: KP_COLOR[util.ap_to_kp(ap)],
     'rsg': RSG_COLOR.get,
     'sfu': color_log_scale(1.45),
-    'sn': color_log_scale(1.45),
+    'sunspots': color_log_scale(1.45),
     'spot_area': lambda area: color_log_scale(1.25, -2.3)(area*2000000),
     'new_regions': RSG_COLOR.get,
     'flux': lambda flux: RSG_COLOR[util.flux_to_r(flux)],
@@ -116,7 +116,7 @@ def archive(args: argparse.Namespace) -> dict | str:
                         out += f'{color(h_kp, 'kp', 2)} '
         if flags & SUN:
             spot_area = f'{format(info.spot_area*100, f'<6.{math.ceil(-math.log(info.spot_area*100))}f').rstrip()}%'
-            out += f'{color(info.sn, 'sn', 5)} {color(info.spot_area, 'spot_area', 7, actual=spot_area)} '
+            out += f'{color(info.sunspots, 'sunspots', 5)} {color(info.spot_area, 'spot_area', 7, actual=spot_area)} '
             out += f'{color(info.f107, 'sfu', 5)} {color(info.new_regions, 'new_regions', 4)} '
             out += f'{color(info.bg_flux, 'flux', 6)} {color(info.max_flux, 'flux', 6)} '
             out += f'{color(info.c_flares, 'c_flare_count', 2)} '
@@ -130,7 +130,12 @@ def archive(args: argparse.Namespace) -> dict | str:
 
 def current(args: argparse.Namespace) -> dict | str:
     from dataclasses import asdict
-    return pprint.pformat(asdict(get_current_data()), sort_dicts=False)
+    data = get_current_data()
+    if args.json:
+        return asdict(data)
+    out = f'space weather conditions on {data.dt.strftime('%Y-%m-%d %H:%M:%S')}'
+    flags = args.mode | (AP if args.ap else 0)
+    return out
 
 
 ARCHIVE_CMDS = ('archive', 'history', 'on')

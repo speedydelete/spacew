@@ -27,11 +27,20 @@ class BaseData:
 class Region(BaseData):
     '''active region data'''
     id: int = -1
-    sn: int = -1
-    size: int = -1
+    latitude: int = -1
+    longitude: int = -1
+    carrington_longitude: int = -1
+    status: str = ''
+    sunspots: int = -1
+    area: float = -1.0
+    spot_class: str = ''
     magnitude: str = ''
-    zmcl: str = ''
-    location: str = ''
+    c_flares: int = -1
+    m_flares: int = -1
+    x_flares: int = -1
+    c_flare_prob: int = -1
+    m_flare_prob: int = -1
+    x_flare_prob: int = -1
 
 @dataclass
 class Flare(BaseData):
@@ -98,7 +107,7 @@ class CurrentData(BaseData):
     wind_density: float = -1.0
     bt: float = -1
     bz: float = -1
-    dst: float = -1
+    dst: int = -1
 
 
 type MultiDayData = dict[date, DayData]

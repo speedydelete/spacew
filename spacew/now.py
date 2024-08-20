@@ -2,7 +2,7 @@
 '''current space weather data'''
 
 from datetime import datetime, date, timedelta, timezone
-from datatypes import BaseData, Flare, CurrentData
+from datatypes import BaseData, Region, Flare, CurrentData
 import util
 from apis import request, request_json, load_txt_data
 
@@ -80,6 +80,47 @@ def flares() -> CurrentData:
         flares = flares,
     )
 
+def regions() -> CurrentData:
+    regions = request_json('json/solar_regions.json')
+    regions = [Region(
+        id = region['region'],
+        latitude = region['latitude'],
+        longitude = region['longitude'],
+        carrington_longitude = region['carrington_longitude'],
+        status = region['status'],
+        magnitude = region['mag_class'],
+        sunspots = region['number_spots'],
+        spot_class = region['spot_class'],
+        area = (region['area'] if region['area'] != None else 0)/1000000,
+        c_flares = region['c_xray_events'],
+        m_flares = region['m_xray_events'],
+        x_flares = region['x_xray_events'],
+        c_flare_prob = region['c_flare_probability'],
+        m_flare_prob = region['m_flare_probability'],
+        x_flare_prob = region['x_flare_probability'],
+    ) for region in regions]
+    regions = [Region(
+        id = region.id,
+        latitude = region.latitude,
+        longitude = region.longitude,
+        carrington_longitude = region.carrington_longitude,
+        status = region.status,
+        magnitude = '' if region.magnitude is None else region.magnitude,
+        sunspots = 0 if region.sunspots is None else region.sunspots,
+        spot_class = '' if region.spot_class is None else region.spot_class,
+        area = region.area,
+        c_flares = region.c_flares,
+        m_flares = region.m_flares,
+        x_flares = region.x_flares,
+        c_flare_prob = region.c_flare_prob,
+        m_flare_prob = region.m_flare_prob,
+        x_flare_prob = region.x_flare_prob,
+    ) for region in regions]
+    regions = {region.id: region for region in regions}
+    regions = list(regions.values())
+    regions.sort(key = lambda region: -region.id)
+    return CurrentData(regions = regions)
+
 def rotation() -> CurrentData:
     # CR 2226 started on 2023-1-1 at 9:10 utc
     # rotations are 27.2753 days long
@@ -91,7 +132,7 @@ def rotation() -> CurrentData:
     )
 
 def dst() -> CurrentData:
-    return CurrentData(dst = request_json('products/kyoto-dst.json')[-1][1])
+    return CurrentData(dst = int(request_json('products/kyoto-dst.json')[-1][1]))
 
 
 def _get() -> BaseData:
@@ -100,8 +141,10 @@ def _get() -> BaseData:
         noaa_scales(),
         kp_ap(),
         flares(),
+        regions(),
         solar(),
         rotation(),
+        dst(),
     )
 
 def get() -> CurrentData:
