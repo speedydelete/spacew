@@ -9,7 +9,8 @@ from discord.ext import tasks
 # these 2 lines fail when this is run directly
 # but work when this is run by discord_bot_main.py
 import discord_bot.config as config_parser
-import now, cli
+import now
+import importlib
 
 
 log = logging.getLogger('spacew_bot')
@@ -23,6 +24,11 @@ log.addHandler(handler)
 
 
 config = config_parser.load()
+
+for module in config.imports:
+    _ = importlib.import_module(module)
+    exec(f'{module} = _')
+
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -41,6 +47,7 @@ async def on_ready():
     config = await config_parser.add_client(config, client)
     set_now.start()
     status.start()
+    alerts.start()
 
 
 @client.event
@@ -52,13 +59,13 @@ async def on_message(message):
 
 
 current = now.get()
-@tasks.loop(seconds=14)
+@tasks.loop(seconds=config.refresh_interval)
 async def set_now():
     global current
     current = now.get()
 
 
-@tasks.loop(seconds=30)
+@tasks.loop(seconds=config.status_interval)
 async def status():
     if config.status_enabled:
         log.info('sending status message')
@@ -67,3 +74,15 @@ async def status():
             await config.status_edit_message.edit(content=message) # type: ignore
         else:
             await config.status_channel.send(message) # type: ignore
+
+
+@tasks.loop(seconds=config.alerts_interval)
+async def alerts():
+    if config.alerts_enabled:
+        for alert in config.alerts:
+            if eval(alert.check) and not alert.last_check:
+                log.debug('alerting: %s', alert.desc)
+                await config.alerts_channel.send(alert.message) # type: ignore
+                alert.last_check = True
+            else:
+                alert.last_check = False

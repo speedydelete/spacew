@@ -1,10 +1,13 @@
 // you must rename this file to "config.json" for it to work
 {
     "token": "put token here",
-    "default_message": "{cli.main(['-nam', 'all'])}",
+    "imports": ["cli"], // imports for code given here
+    "default_message": "{cli.main(['-nam', 'all'])}", // python f-string, the message for stuff
+    "refresh_interval": 14, // the number of seconds for loading new data
     "status": {
         "enabled": true,
         "channel": "put status channel id here",
+        "interval": 30, // the number of seconds between status messages
         "edit": true,
         "edit_message": "put message id to edit here, if edit = false, this is not needed",
         "message": null // if it's null, it's replaced with default_message
@@ -12,9 +15,11 @@
     "alerts": {
         "enabled": true,
         "channel": "put alerts channel id here",
+        "interval": 30, // the number of seconds between alert checks
         "alerts": [
             {
-                "check": "int(now.kp[0])>=7",
+                "desc": "everyone ping for kp>=7",
+                "check": "int(current.kp[0])>=7",
                 "message": "@everyone aurora activity is currently very high (Kp{now.kp}/G{now.g})"
             }
         ]

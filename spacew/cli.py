@@ -244,6 +244,7 @@ def main(argv: Sequence[str] = sys.argv, path: str = '.') -> str:
             os.system('py -u discord_bot_main.py')
         else:
             os.system('python -u discord_bot_main.py')
+        return ''
     if args.json or not isinstance(out, str):
         return pprint.pformat(json.loads(json.dumps({
             'version': VERSION,
