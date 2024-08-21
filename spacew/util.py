@@ -90,6 +90,8 @@ def flux_to_r(flux: Flux) -> RSG:
         return 0
     letter = flux[0]
     number = float(flux[1:])
+    if number == 0:
+        return 0
     if letter == 'X':
         return (5 if number >= 20 else (4 if number >= 10 else 3))
     elif letter == 'M':

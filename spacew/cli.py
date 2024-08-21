@@ -19,8 +19,8 @@ VERSION = '1.0'
 KP_COLOR = {
     '0': '39', '0+': '39',
     '1-': '39', '1': '39', '1+': '39',
-    '2-': '32', '2': '92', '2+': '32',
-    '3-': '32', '3': '92', '3+': '32',
+    '2-': '32', '2': '32', '2+': '32',
+    '3-': '32', '3': '32', '3+': '32',
     '4-': '92', '4': '92', '4+': '92',
     '5-': '92', '5': '92', '5+': '92',
     '6-': '93', '6': '93', '6+': '93',
@@ -29,6 +29,7 @@ KP_COLOR = {
     '9-': '31', '9': '31', '9+': '31',
 }
 
+C_FLARE_COLOR = ['39', '32', '92', '93', '31']
 RSG_COLOR = {-1: '39', 0: '39', 1: '32', 2: '92', 3: '93', 4: '31', 5: '31'}
 
 def color_log_scale(mul: int | float, add: int | float = 0) -> Callable:
@@ -47,9 +48,9 @@ COLOR = {
     'spot_area': lambda area: color_log_scale(1.25, -2.3)(area*2000000),
     'new_regions': RSG_COLOR.get,
     'flux': lambda flux: RSG_COLOR[util.flux_to_r(flux)],
-    'c_flare_count': lambda count: RSG_COLOR[util.flux_to_r('C' + str(count))],
-    'm_flare_count': lambda count: RSG_COLOR[util.flux_to_r('M' + str(count))],
-    'x_flare_count': lambda count: RSG_COLOR[util.flux_to_r('X' + str(count))],
+    'c_flare_count': C_FLARE_COLOR.__getitem__,
+    'm_flare_count': lambda count: ('31' if count > 1 else '92') if count > 0 else '39',
+    'x_flare_count': lambda count: '31' if count > 0 else '39',
 }
 
 def color(value: Any, map_name: str, width: int | None = None, actual: str | None = None, \
@@ -136,14 +137,23 @@ def current(args: argparse.Namespace) -> dict | str:
     out += f'{color(info.r, 'rsg', before='R')} '
     out += f'{color(info.s, 'rsg', before='S')} '
     out += f'{color(info.g, 'rsg', before='G')} '
-    out += f'(24 hour maxes: {color(info.r_24h_max, 'rsg', before='R')} '
+    out += f'(24h maxes: {color(info.r_24h_max, 'rsg', before='R')} '
     out += f'{color(info.s_24h_max, 'rsg', before='S')} '
     out += f'{color(info.g_24h_max, 'rsg', before='G')})\n'
     flags = args.mode | (AP if args.ap else 0)
     if flags & EARTH:
-        out += f'Kp: {color(info.kp, 'kp')} {f'(ap: {color(info.ap, 'ap')})' if flags & AP else ''}\n'
+        out += f'Kp: {color(info.kp, 'kp')} {f'(ap: {color(info.ap, 'ap')})' if flags & AP else ''}, '
+        out += f'bt: {info.bt}, bz: {info.bz}, dst: {info.dst}\n'
     if flags & SUN:
-        out += f'{color(info.sunspots, 'sunspots')} sunspots ({color(info.spot_area, 'spot_area', actual=str(info.spot_area*100))})'
+        out += f'{color(info.sunspots, 'sunspots')} sunspots'
+        out += f' ({color(info.spot_area, 'spot_area', actual=str(info.spot_area*100))}%)\n'
+        out += f'10.7cm radio flux: {color(info.f107, 'sfu')} sfu\n'
+        out += f'x-ray flux: {color(info.flux, 'flux')} '
+        out += f'(2h max: {color(info.flux_2h_max, 'flux')}, 24h max: {color(info.flux_24h_max, 'flux')})\n'
+        out += f'flares today: {color(info.c_flares, 'c_flare_count')} c-class, '
+        out += f'{color(info.m_flares, 'm_flare_count')} m-class, and {color(info.x_flares, 'x_flare_count')} x-class\n'
+        out += f'carrington rotation {info.rotation}\n'
+        out += f'solar wind: speed: {info.wind_speed} km/s, density: {info.wind_density} p/cm^3'
     return out
 
 
