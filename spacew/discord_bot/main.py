@@ -15,8 +15,7 @@ import now, cli
 
 config = config_parser.load()
 
-logger = logging.getLogger('spacew_bot')
-
+logger = logging.getLogger('discord.spacew_bot')
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -31,9 +30,6 @@ client = discord.Client(
 async def on_ready():
     global config
     handler = logging.StreamHandler(sys.stdout)
-    print(logging.getLogger('discord').handlers[1].formatter)
-    handler.setFormatter(logging.getLogger('discord').handlers[1].formatter)
-    logger.addHandler(handler)
     logger.info('logged in as %s', client.user)
     config = await config_parser.add_client(config, client)
     set_now.start()
