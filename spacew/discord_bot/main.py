@@ -4,7 +4,6 @@
 # pylint: disable=eval-used
 
 import logging
-import sys
 import discord
 from discord.ext import tasks
 # these 2 lines fail when this is run directly
@@ -13,9 +12,17 @@ import discord_bot.config as config_parser
 import now, cli
 
 
-config = config_parser.load()
+log = logging.getLogger('spacew_bot')
+log.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+format_string = ''
+datefmt_string = '%Y-%m-%d %H:%M:%S'
+formatter = logging.Formatter(format_string, datefmt=datefmt_string)
+handler.setFormatter(logging.Formatter('[%(asctime)s] [%(levelname)-8s] %(name)s: %(message)s', '%Y-%m-%d %H:%M:%S'))
+log.addHandler(handler)
 
-logger = logging.getLogger('discord.spacew_bot')
+
+config = config_parser.load()
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -23,14 +30,14 @@ intents.message_content = True
 client = discord.Client(
     intents=intents,
     allowed_mentions=discord.AllowedMentions(everyone=True),
+    log_level=logging.DEBUG,
 )
 
 
 @client.event
 async def on_ready():
     global config
-    handler = logging.StreamHandler(sys.stdout)
-    logger.info('logged in as %s', client.user)
+    log.info('logged in as %s', client.user)
     config = await config_parser.add_client(config, client)
     set_now.start()
     status.start()
@@ -54,7 +61,7 @@ async def set_now():
 @tasks.loop(seconds=30)
 async def status():
     if config.status_enabled:
-        logger.info('sending status message')
+        log.info('sending status message')
         message = eval('f"""' + config.status_message + '"""')
         if config.status_edit:
             await config.status_edit_message.edit(content=message) # type: ignore

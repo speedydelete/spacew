@@ -134,7 +134,7 @@ def current(args: argparse.Namespace) -> dict | str:
     info = get_current_data()
     if args.json:
         return asdict(info)
-    out = f'space weather conditions at {info.dt.strftime('%Y-%m-%d %H:%M:%S')}\n'
+    out = f'space weather conditions at {info.dt.strftime('%Y-%m-%d %H:%M:%S')}:\n'
     out += f'{color(info.r, 'rsg', before='R')} '
     out += f'{color(info.s, 'rsg', before='S')} '
     out += f'{color(info.g, 'rsg', before='G')} '
