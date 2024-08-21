@@ -1,6 +1,7 @@
+// you must rename this file to "config.json" for it to work
 {
     "token": "put token here",
-    "default_message": "kp: {now.kp}",
+    "default_message": "{cli.main(['-nam', 'all'])}",
     "status": {
         "enabled": true,
         "channel": "put status channel id here",

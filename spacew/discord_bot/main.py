@@ -7,16 +7,16 @@ import logging
 import sys
 import discord
 from discord.ext import tasks
-from . import config as config_parser
-from .. import now
+# these 2 lines fail when this is run directly
+# but work when this is run by discord_bot_main.py
+import discord_bot.config as config_parser
+import now, cli
 
 
 config = config_parser.load()
 
 logger = logging.getLogger('spacew_bot')
-handler = logging.StreamHandler(sys.stdout)
-handler.setFormatter(logging.getLogger('discord').handlers[0].formatter)
-logger.addHandler(handler)
+
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -30,6 +30,10 @@ client = discord.Client(
 @client.event
 async def on_ready():
     global config
+    handler = logging.StreamHandler(sys.stdout)
+    print(logging.getLogger('discord').handlers[1].formatter)
+    handler.setFormatter(logging.getLogger('discord').handlers[1].formatter)
+    logger.addHandler(handler)
     logger.info('logged in as %s', client.user)
     config = await config_parser.add_client(config, client)
     set_now.start()
@@ -51,13 +55,6 @@ async def set_now():
     current = now.get()
 
 
-config.status_message = """```
-space weather conditions at {now.dt.strftime('%Y/%m/%d %H:%M:%S UTC')}
-R{now.r} S{now.s} G{now.g}
-Kp{now.kp} ap {now.ap}
-```"""
-
-
 @tasks.loop(seconds=30)
 async def status():
     if config.status_enabled:
@@ -67,6 +64,3 @@ async def status():
             await config.status_edit_message.edit(content=message) # type: ignore
         else:
             await config.status_channel.send(message) # type: ignore
-
-
-client.run(config.token)

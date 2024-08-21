@@ -58,7 +58,7 @@ def load_status(out: Config) -> Config:
 def load() -> Config:
     global config
     out = Config()
-    with open('config.json', 'r', encoding='utf-8') as file:
+    with open('discord_bot/config.json', 'r', encoding='utf-8') as file:
         config = json.load(file)
     out.token = key('token')
     out.default_message = key('default_message')

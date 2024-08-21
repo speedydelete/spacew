@@ -1,18 +1,19 @@
 
 '''spacew command line interface'''
 
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 from datetime import date as date, timedelta
 import math
 import re
 import json
+import sys
+import os
 import pprint
 import argparse
 import dateutil
 from cache import get_past_data
 from now import get as get_current_data
 import util
-
 
 VERSION = '1.0'
 
@@ -29,7 +30,7 @@ KP_COLOR = {
     '9-': '31', '9': '31', '9+': '31',
 }
 
-C_FLARE_COLOR = ['39', '32', '92', '93', '31']
+C_FLARE_COLOR = ('39', '32', '92', '93', '31')
 RSG_COLOR = {-1: '39', 0: '39', 1: '32', 2: '92', 3: '93', 4: '31', 5: '31'}
 
 def color_log_scale(mul: int | float, add: int | float = 0) -> Callable:
@@ -48,7 +49,7 @@ COLOR = {
     'spot_area': lambda area: color_log_scale(1.25, -2.3)(area*2000000),
     'new_regions': RSG_COLOR.get,
     'flux': lambda flux: RSG_COLOR[util.flux_to_r(flux)],
-    'c_flare_count': C_FLARE_COLOR.__getitem__,
+    'c_flare_count': lambda count: '31' if count > 4 else C_FLARE_COLOR[count],
     'm_flare_count': lambda count: ('31' if count > 1 else '92') if count > 0 else '39',
     'x_flare_count': lambda count: '31' if count > 0 else '39',
 }
@@ -159,7 +160,8 @@ def current(args: argparse.Namespace) -> dict | str:
 
 ARCHIVE_CMDS = ('archive', 'history', 'on')
 CURRENT_CMDS = ('current', 'now')
-COMMANDS = ARCHIVE_CMDS + CURRENT_CMDS
+DISCORD_CMDS = ('discord', 'bot')
+COMMANDS = ARCHIVE_CMDS + CURRENT_CMDS + DISCORD_CMDS
 
 EARTH = 1
 HOUR = 2
@@ -203,45 +205,65 @@ def command_or_date(arg: str) -> str | tuple[str, date]:
         except argparse.ArgumentTypeError:
             raise argparse.ArgumentTypeError(f'not a valid command or date: {arg}') from None
 
-parser = argparse.ArgumentParser(
-    prog='spacew',
-    description='outputs space weather information for date(s)',
-)
 
-parser.add_argument('command_or_date', action='store', nargs='?', type=command_or_date, default='now')
-parser.add_argument('start_date', nargs='?', action='store', type=date_arg, \
-                    default=str(date.today()), help='the date to get data for (default is today)')
-parser.add_argument('end_date', nargs='?', action='store', type=date_arg, help='the end date for a date range, ' + \
-                    'when provided it gives all dates between date and this')
-parser.add_argument('mode', nargs='?', action='store', type=mode, default='default', \
-                    help='the data to output (default|sun|earth|all)')
-parser.add_argument('-m', '--mode', action='store', dest='mode', type=mode, default='default', \
-                    help='the data to output (default|sun|earth|all)')
-parser.add_argument('-v', '--version', action='version', version=VERSION, help='print the version')
-parser.add_argument('-j', '--json', action='store_true', help='output json')
-parser.add_argument('-n', '--nocolor', '--no-color', action='store_true', help='disable color output')
-parser.add_argument('-r', '--refresh', action='store_true', help='force data refresh instead of loading from cache')
-parser.add_argument('-c', '--cache', action='store_false', help='disable auto saving to cache')
-parser.add_argument('-a', '-p', '-ap', '--ap', action='store_true', help='whether to output ap')
+def parse(args: Sequence[str] = sys.argv) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog='spacew',
+        description='outputs space weather information for date(s)',
+    )
+    parser.add_argument('command_or_date', action='store', nargs='?', type=command_or_date, default='now')
+    parser.add_argument('start_date', nargs='?', action='store', type=date_arg, \
+                        default=str(date.today()), help='the date to get data for (default is today)')
+    parser.add_argument('end_date', nargs='?', action='store', type=date_arg, help='the end date for a date range, ' + \
+                        'when provided it gives all dates between date and this')
+    parser.add_argument('mode', nargs='?', action='store', type=mode, default='default', \
+                        help='the data to output (default|sun|earth|all)')
+    parser.add_argument('-m', '--mode', action='store', dest='mode', type=mode, default='default', \
+                        help='the data to output (default|sun|earth|all)')
+    parser.add_argument('-v', '--version', action='version', version=VERSION, help='print the version')
+    parser.add_argument('-j', '--json', action='store_true', help='output json')
+    parser.add_argument('-n', '--nocolor', '--no-color', action='store_true', help='disable color output')
+    parser.add_argument('-r', '--refresh', action='store_true', help='force data refresh instead of loading from cache')
+    parser.add_argument('-c', '--cache', action='store_false', help='disable auto saving to cache')
+    parser.add_argument('-a', '-p', '-ap', '--ap', action='store_true', help='whether to output ap')
+    return parser.parse_args(args)
 
-arguments = parser.parse_args()
+def main(argv: Sequence[str] = sys.argv, path: str = '.') -> str:
+    args = parse(argv)
+    cmd = args.command_or_date
+    if isinstance(cmd, tuple):
+        args.cmd, args.start_date = cmd
+        cmd = args.cmd
+    if cmd in ARCHIVE_CMDS:
+        out = archive(args)
+    elif cmd in CURRENT_CMDS:
+        out = current(args)
+    elif cmd in DISCORD_CMDS:
+        os.chdir(path)
+        if os.name == 'nt':
+            os.system('py -u discord_bot_main.py')
+        else:
+            os.system('python -u discord_bot_main.py')
+    if args.json or not isinstance(out, str):
+        return pprint.pformat(json.loads(json.dumps({
+            'version': VERSION,
+            'args': vars(args),
+            'data': out,
+        })), sort_dicts=False)
+    else:
+        if args.nocolor:
+            out = re.sub(r'\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', out)
+        return out
 
-cmd = arguments.command_or_date
-if isinstance(cmd, tuple):
-    arguments.cmd, arguments.start_date = cmd
-    cmd = arguments.cmd
-if cmd in ARCHIVE_CMDS:
-    output = archive(arguments)
-elif cmd in CURRENT_CMDS:
-    output = current(arguments)
 
-if arguments.json or not isinstance(output, str):
-    pprint.pp(json.loads(json.dumps({
-        'version': VERSION,
-        'args': vars(arguments),
-        'data': output,
-    })), sort_dicts=False)
-else:
-    if arguments.nocolor:
-        output = re.sub(r'\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', output)
-    print(output)
+def main_sys_argv() -> None:
+    argv = sys.argv
+    while not argv[0].endswith('cli.py'):
+        argv = argv[1:]
+    path = '/'.join((argv[0].split('/'))[:-1]) + '/'
+    argv = argv[1:]
+    print(main(argv, path))
+
+
+if __name__ == '__main__':
+    main_sys_argv()
