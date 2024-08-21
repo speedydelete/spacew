@@ -143,7 +143,7 @@ def current(args: argparse.Namespace) -> dict | str:
     out += f'{color(info.g_24h_max, 'rsg', before='G')})\n'
     flags = args.mode | (AP if args.ap else 0)
     if flags & EARTH:
-        out += f'Kp: {color(info.kp, 'kp')} {f'(ap: {color(info.ap, 'ap')})' if flags & AP else ''}, '
+        out += f'kp{color(info.kp, 'kp')} {f'(ap: {color(info.ap, 'ap')})' if flags & AP else ''}, '
         out += f'bt: {info.bt}, bz: {info.bz}, dst: {info.dst}\n'
     if flags & SUN:
         out += f'{color(info.sunspots, 'sunspots')} sunspots'
