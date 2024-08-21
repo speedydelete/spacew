@@ -2,13 +2,13 @@
 {
     "token": "put token here",
     "imports": ["cli"], // imports for code given here
-    "default_message": "{cli.main(['-nam', 'all'])}", // python f-string, the message for stuff
+    "default_message": "```ansi\n{cli.main(['-am', 'all'])}```", // python f-string, the message for stuff
     "refresh_interval": 14, // the number of seconds for loading new data
     "status": {
         "enabled": true,
         "channel": "put status channel id here",
         "interval": 30, // the number of seconds between status messages
-        "edit": true,
+        "edit": true, // whether to edit a message instead of sending a new one
         "edit_message": "put message id to edit here, if edit = false, this is not needed",
         "message": null // if it's null, it's replaced with default_message
     },
@@ -18,8 +18,8 @@
         "interval": 30, // the number of seconds between alert checks
         "alerts": [
             {
-                "desc": "everyone ping for kp>=7",
-                "check": "int(current.kp[0])>=7",
+                "desc": "everyone ping for kp>=7", // program description, put in logs
+                "check": "int(current.kp[0])>=7", // if this eval's to true, the message is sent
                 "message": "@everyone aurora activity is currently very high (Kp{now.kp}/G{now.g})"
             }
         ]

@@ -243,7 +243,7 @@ def main(argv: Sequence[str] = sys.argv, path: str = '.') -> str:
         if os.name == 'nt':
             os.system('py -u discord_bot_main.py')
         else:
-            os.system('python -u discord_bot_main.py')
+            os.system('python3 -u discord_bot_main.py')
         return ''
     if args.json or not isinstance(out, str):
         return pprint.pformat(json.loads(json.dumps({
