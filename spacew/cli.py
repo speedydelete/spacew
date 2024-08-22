@@ -104,8 +104,7 @@ def format_current_data_text(info: CurrentData, flags: int) -> str:
         out += f'kp{color(info.kp, 'kp')} {f'(ap: {color(info.ap, 'ap')})' if flags & AP else ''}, '
         out += f'bt: {info.bt}, bz: {info.bz}, dst: {info.dst}\n'
     if flags & SUN:
-        out += f'{color(info.sunspots, 'sunspots')} sunspots'
-        out += f' ({color(info.spot_area, 'spot_area', actual=str(info.spot_area*100))}%)\n'
+        out += f'{color(info.sunspots, 'sunspots')} sunspots\n'
         out += f'10.7cm radio flux: {color(info.f107, 'sfu')} sfu\n'
         out += f'x-ray flux: {color(info.flux, 'flux')} '
         out += f'(2h max: {color(info.flux_2h_max, 'flux')}, 24h max: {color(info.flux_24h_max, 'flux')})\n'
