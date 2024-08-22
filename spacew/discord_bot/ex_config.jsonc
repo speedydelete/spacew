@@ -23,5 +23,15 @@
                 "message": "@everyone aurora activity is currently very high (Kp{now.kp}/G{now.g})"
             }
         ]
+    },
+    "text_commands": {
+        "enabled": true,
+        "prefix": ",", // prefix for commands, set to null to disable
+        "commands": [
+            {
+                "name": "spacew", // name of the command, it can be accessed with /name or <prefix>name
+                "message": "cli.main({args.split(' ')})" // f-string to be run as the message
+            }
+        ]
     }
 }
