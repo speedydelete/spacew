@@ -114,7 +114,7 @@ def merge_data(first: BaseData, *datas: BaseData) -> BaseData:
                 setattr(first, key, value)
     return first
 
-def merge_multi_day_data(first: MultiDayData, *datas: MultiDayData) -> MultiDayData:
+def merge_mdd(first: MultiDayData, *datas: MultiDayData) -> MultiDayData:
     for key in list(first.keys()):
         filtered = [data[key] for data in datas]
         first[key] = merge_data(first[key], *filtered) # type: ignore

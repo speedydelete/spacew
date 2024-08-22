@@ -9,8 +9,10 @@ import json
 import sys
 import os
 import pprint
+from dataclasses import asdict
 import argparse
 import dateutil
+from datatypes import DayData, CurrentData, MultiDayData
 from cache import get_past_data
 from now import get as get_current_data
 import util
@@ -69,15 +71,30 @@ def color(value: Any, map_name: str, width: int | None = None, actual: str | Non
     return f'\x1b[{COLOR[map_name](value)}m{text}'
 
 
-def archive(args: argparse.Namespace) -> dict | str:
-    start, end = args.start_date, args.end_date
-    if end is None:
-        end = start
-    end += timedelta(days=1)
-    flags = args.mode | (AP if args.ap else 0)
-    data = get_past_data(start, end, args.refresh, args.cache)
-    if args.json:
-        return data
+def format_current_data_text(info: CurrentData, flags: int) -> str:
+    out = f'space weather conditions at {info.dt.strftime('%Y-%m-%d %H:%M:%S')}:\n'
+    out += f'{color(info.r, 'rsg', before='R')} '
+    out += f'{color(info.s, 'rsg', before='S')} '
+    out += f'{color(info.g, 'rsg', before='G')} '
+    out += f'(24h maxes: {color(info.r_24h_max, 'rsg', before='R')} '
+    out += f'{color(info.s_24h_max, 'rsg', before='S')} '
+    out += f'{color(info.g_24h_max, 'rsg', before='G')})\n'
+    if flags & EARTH:
+        out += f'kp{color(info.kp, 'kp')} {f'(ap: {color(info.ap, 'ap')})' if flags & AP else ''}, '
+        out += f'bt: {info.bt}, bz: {info.bz}, dst: {info.dst}\n'
+    if flags & SUN:
+        out += f'{color(info.sunspots, 'sunspots')} sunspots'
+        out += f' ({color(info.spot_area, 'spot_area', actual=str(info.spot_area*100))}%)\n'
+        out += f'10.7cm radio flux: {color(info.f107, 'sfu')} sfu\n'
+        out += f'x-ray flux: {color(info.flux, 'flux')} '
+        out += f'(2h max: {color(info.flux_2h_max, 'flux')}, 24h max: {color(info.flux_24h_max, 'flux')})\n'
+        out += f'flares today: {color(info.c_flares, 'c_flare_count')} c-class, '
+        out += f'{color(info.m_flares, 'm_flare_count')} m-class, and {color(info.x_flares, 'x_flare_count')} x-class\n'
+        out += f'carrington rotation {info.rotation}\n'
+        out += f'solar wind: speed: {info.wind_speed} km/s, density: {info.wind_density} p/cm^3'
+    return out
+
+def format_mdd_table(data: MultiDayData, flags: int) -> str:
     out = '\x1b[96mdate       '
     if flags & EARTH:
         out += 'kp -  +  R-+ S-+ G-+ '
@@ -135,28 +152,8 @@ def current(args: argparse.Namespace) -> dict | str:
     info = get_current_data()
     if args.json:
         return asdict(info)
-    out = f'space weather conditions at {info.dt.strftime('%Y-%m-%d %H:%M:%S')}:\n'
-    out += f'{color(info.r, 'rsg', before='R')} '
-    out += f'{color(info.s, 'rsg', before='S')} '
-    out += f'{color(info.g, 'rsg', before='G')} '
-    out += f'(24h maxes: {color(info.r_24h_max, 'rsg', before='R')} '
-    out += f'{color(info.s_24h_max, 'rsg', before='S')} '
-    out += f'{color(info.g_24h_max, 'rsg', before='G')})\n'
     flags = args.mode | (AP if args.ap else 0)
-    if flags & EARTH:
-        out += f'kp{color(info.kp, 'kp')} {f'(ap: {color(info.ap, 'ap')})' if flags & AP else ''}, '
-        out += f'bt: {info.bt}, bz: {info.bz}, dst: {info.dst}\n'
-    if flags & SUN:
-        out += f'{color(info.sunspots, 'sunspots')} sunspots'
-        out += f' ({color(info.spot_area, 'spot_area', actual=str(info.spot_area*100))}%)\n'
-        out += f'10.7cm radio flux: {color(info.f107, 'sfu')} sfu\n'
-        out += f'x-ray flux: {color(info.flux, 'flux')} '
-        out += f'(2h max: {color(info.flux_2h_max, 'flux')}, 24h max: {color(info.flux_24h_max, 'flux')})\n'
-        out += f'flares today: {color(info.c_flares, 'c_flare_count')} c-class, '
-        out += f'{color(info.m_flares, 'm_flare_count')} m-class, and {color(info.x_flares, 'x_flare_count')} x-class\n'
-        out += f'carrington rotation {info.rotation}\n'
-        out += f'solar wind: speed: {info.wind_speed} km/s, density: {info.wind_density} p/cm^3'
-    return out
+    return format_current_data_text(info, flags)
 
 
 ARCHIVE_CMDS = ('archive', 'history', 'on')
@@ -235,10 +232,26 @@ def main(argv: Sequence[str] = sys.argv, path: str = '.', secure: bool = False, 
     if isinstance(cmd, tuple):
         args.cmd, args.start_date = cmd
         cmd = args.cmd
+    flags = args.mode | (AP if args.ap else 0)
     if cmd in ARCHIVE_CMDS:
-        out = archive(args)
+        start, end = args.start_date, args.end_date
+        if end is None:
+            end = start
+            format_text = True
+        else:
+            format_text = False
+        end += timedelta(days=1)
+        flags = args.mode | (AP if args.ap else 0)
+        data = get_past_data(start, end, args.refresh, args.cache)
+        if args.json:
+            out = {key: asdict(value) for key, value in data.items()}
+        elif format_text:
+            out = format
+        else:
+            out = format_mdd_table(data, flags)
     elif cmd in CURRENT_CMDS:
-        out = current(args)
+        info = get_current_data()
+        out = asdict(info) if args.json else format_current_data_text(info, flags)
     elif cmd in DISCORD_CMDS:
         if not secure:
             os.chdir(path)
