@@ -17,6 +17,7 @@ from cache import get_past_data
 from now import get as get_current_data
 import util
 
+
 VERSION = '1.0'
 
 KP_COLOR = {
@@ -32,9 +33,29 @@ KP_COLOR = {
     '9-': '31', '9': '31', '9+': '31',
 }
 
-RSG_COLOR = {-1: '39', 0: '39', 1: '32', 2: '92', 3: '93', 4: '31', 5: '31'}
+RSG_COLOR = {0: '39', 1: '32', 2: '92', 3: '93', 4: '31', 5: '31', 9: '39'}
 FLUX_COLOR = {'A': '39', 'B': '32', 'C': '92', 'M': '93', 'X': '31'}
 C_FLARE_COLOR = ('39', '32', '92', '93', '31')
+
+
+ARCHIVE_CMDS = ('archive', 'history', 'on')
+CURRENT_CMDS = ('current', 'now')
+DISCORD_CMDS = ('discord', 'bot')
+COMMANDS = ARCHIVE_CMDS + CURRENT_CMDS + DISCORD_CMDS
+
+EARTH = 1
+HOUR = 2
+SUN = 4
+FLARES = 8
+REGIONS = 16
+AP = 32
+MODE_FLAG_MAP = {
+    'default': EARTH | SUN,
+    'earth': EARTH | HOUR,
+    'sun': SUN | FLARES,
+    'all': EARTH | HOUR | SUN | FLARES,
+}
+
 
 def color_log_scale(mul: int | float, add: int | float = 0) -> Callable:
     def wrapper(value: int | float):
@@ -90,7 +111,7 @@ def format_current_data_text(info: CurrentData, flags: int) -> str:
         out += f'(2h max: {color(info.flux_2h_max, 'flux')}, 24h max: {color(info.flux_24h_max, 'flux')})\n'
         out += f'flares today: {color(info.c_flares, 'c_flare_count')} c-class, '
         out += f'{color(info.m_flares, 'm_flare_count')} m-class, and {color(info.x_flares, 'x_flare_count')} x-class\n'
-        out += f'carrington rotation {info.rotation}\n'
+        out += f'solar cycle {info.cycle}, carrington rotation {info.rotation}\n'
         out += f'solar wind: speed: {info.wind_speed} km/s, density: {info.wind_density} p/cm^3'
     return out
 
@@ -147,32 +168,34 @@ def format_mdd_table(data: MultiDayData, flags: int) -> str:
                 pass
     return out + '\n'
 
-def current(args: argparse.Namespace) -> dict | str:
-    from dataclasses import asdict
-    info = get_current_data()
-    if args.json:
-        return asdict(info)
-    flags = args.mode | (AP if args.ap else 0)
-    return format_current_data_text(info, flags)
+def format_day_data_text(info: DayData, flags: int) -> str:
+    out = f'space weather conditions at {info.day.strftime('%Y-%m-%d %H:%M:%S')}:\n'
+    out += f'{color(info.r_avg, 'rsg', before='R')} '
+    out += f'{color(info.s_avg, 'rsg', before='S')} '
+    out += f'{color(info.g_avg, 'rsg', before='G')} '
+    out += f'(min: {color(info.r_min, 'rsg', before='R')} '
+    out += f'{color(info.s_min, 'rsg', before='S')} '
+    out += f'{color(info.g_min, 'rsg', before='G')}, '
+    out += f'max: {color(info.r_max, 'rsg', before='R')} '
+    out += f'{color(info.s_max, 'rsg', before='S')} '
+    out += f'{color(info.g_max, 'rsg', before='G')})\n'
+    if flags & EARTH:
+        out += f'   00  03  06  09  12  15  18  21\n'
+        out += f'kp {' '.join([kp.ljust(3) for kp in info.kps])}\n'
+        if flags & AP:
+            out += f'ap {' '.join([str(ap).ljust(3) for ap in info.aps])}\n'
+        out += f'bt: {info.bt}, bz: {info.bz}, dst: {info.dst}\n'
+    if flags & SUN:
+        out += f'{color(info.sunspots, 'sunspots')} sunspots'
+        out += f' ({color(info.spot_area, 'spot_area', actual=str(info.spot_area*100))}%)\n'
+        out += f'10.7cm radio flux: {color(info.f107, 'sfu')} sfu\n'
+        out += f'background flux: {color(info.bg_flux, 'flux')}, max flux: {color(info.max_flux, 'flux')}\n'
+        out += f'flares: {color(info.c_flares, 'c_flare_count')} c-class, '
+        out += f'{color(info.m_flares, 'm_flare_count')} m-class, and {color(info.x_flares, 'x_flare_count')} x-class\n'
+        out += f'solar cycle {info.cycle}, carrington rotation {info.rotation}\n'
+        out += f'solar wind: speed: {info.wind_speed} km/s, density: {info.wind_density} p/cm^3'
+    return out
 
-
-ARCHIVE_CMDS = ('archive', 'history', 'on')
-CURRENT_CMDS = ('current', 'now')
-DISCORD_CMDS = ('discord', 'bot')
-COMMANDS = ARCHIVE_CMDS + CURRENT_CMDS + DISCORD_CMDS
-
-EARTH = 1
-HOUR = 2
-SUN = 4
-FLARES = 8
-REGIONS = 16
-AP = 32
-MODE_FLAG_MAP = {
-    'default': EARTH | SUN,
-    'earth': EARTH | HOUR,
-    'sun': SUN | FLARES,
-    'all': EARTH | HOUR | SUN | FLARES,
-}
 
 def mode(arg: str) -> int:
     try:
@@ -237,16 +260,13 @@ def main(argv: Sequence[str] = sys.argv, path: str = '.', secure: bool = False, 
         start, end = args.start_date, args.end_date
         if end is None:
             end = start
-            format_text = True
-        else:
-            format_text = False
         end += timedelta(days=1)
         flags = args.mode | (AP if args.ap else 0)
         data = get_past_data(start, end, args.refresh, args.cache)
         if args.json:
             out = {key: asdict(value) for key, value in data.items()}
-        elif format_text:
-            out = format
+        elif len(data) == 1:
+            out = format_day_data_text(data[next(iter(data))], flags)
         else:
             out = format_mdd_table(data, flags)
     elif cmd in CURRENT_CMDS:

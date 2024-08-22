@@ -4,6 +4,7 @@
 # pylint: disable=eval-used
 
 from typing import Literal
+from datetime import datetime
 import math
 from dataclasses import asdict
 from datatypes import Kp, Ap, RSG, Flux, BaseData, MultiDayData
@@ -119,3 +120,47 @@ def merge_mdd(first: MultiDayData, *datas: MultiDayData) -> MultiDayData:
         filtered = [data[key] for data in datas]
         first[key] = merge_data(first[key], *filtered) # type: ignore
     return first
+
+
+def rotation(dt) -> int:
+    # CR 2226 started on 2023-1-1 at 9:10 utc
+    # rotations are 27.2753 days long
+    out = dt - datetime(2023, 1, 1, 9, 10)
+    out = out.days + (out.seconds + out.microseconds / 1e6) / 86400
+    out = out / 27.2753 + 2266
+    return int(out)
+
+
+CYCLE_START_DTS = [
+    datetime(1755, 2, 1),
+    datetime(1766, 6, 1),
+    datetime(1775, 6, 1),
+    datetime(1784, 9, 1),
+    datetime(1798, 4, 1),
+    datetime(1810, 7, 1),
+    datetime(1823, 5, 1),
+    datetime(1833, 11, 1),
+    datetime(1843, 7, 1),
+    datetime(1855, 12, 1),
+    datetime(1867, 3, 1),
+    datetime(1878, 12, 1),
+    datetime(1890, 3, 1),
+    datetime(1902, 1, 1),
+    datetime(1913, 7, 1),
+    datetime(1923, 8, 1),
+    datetime(1933, 9, 1),
+    datetime(1944, 2, 1),
+    datetime(1954, 4, 1),
+    datetime(1964, 10, 1),
+    datetime(1976, 3, 1),
+    datetime(1986, 9, 1),
+    datetime(1996, 8, 1),
+    datetime(2008, 12, 1),
+    datetime(2019, 12, 1),
+]
+
+def cycle(dt) -> int:
+    for i, start in enumerate(CYCLE_START_DTS):
+        if dt < start:
+            return i + 1
+    return len(CYCLE_START_DTS)

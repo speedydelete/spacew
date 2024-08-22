@@ -89,6 +89,7 @@ def get(start: date, end: date | None = None) -> MultiDayData:
     if end is None:
         end = start + timedelta(days=1)
     return util.merge_mdd(
+        {day: DayData(day = day) for day in [start + timedelta(days=x) for x in range((end - start).days)]},
         kp_ap(start, end),
         solar(start, end),
     )

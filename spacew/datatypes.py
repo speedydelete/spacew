@@ -6,7 +6,7 @@ from datetime import date, time, datetime
 from dataclasses import dataclass
 
 
-type RSG = Literal[-1, 0, 1, 2, 3, 4, 5]
+type RSG = Literal[9, 0, 1, 2, 3, 4, 5]
 
 type Flux = str
 
@@ -55,15 +55,16 @@ class Flare(BaseData):
 @dataclass
 class DayData(BaseData):
     '''space weather for a previous day'''
-    r_avg: RSG = -1
-    r_min: RSG = -1
-    r_max: RSG = -1
-    s_avg: RSG = -1
-    s_min: RSG = -1
-    s_max: RSG = -1
-    g_avg: RSG = -1
-    g_min: RSG = -1
-    g_max: RSG = -1
+    day: date = date(9999, 12, 31)
+    r_avg: RSG = 9
+    r_min: RSG = 9
+    r_max: RSG = 9
+    s_avg: RSG = 9
+    s_min: RSG = 9
+    s_max: RSG = 9
+    g_avg: RSG = 9
+    g_min: RSG = 9
+    g_max: RSG = 9
     kps: Sequence[Kp] = ()
     aps: Sequence[Ap] = ()
     sunspots: int = -1
@@ -77,17 +78,24 @@ class DayData(BaseData):
     x_flares: int = -1
     regions: Sequence[Region] = ()
     flares: Sequence[Flare] = ()
+    cycle: int = -1
+    rotation: int = -1
+    wind_speed: float = -1.0
+    wind_density: float = -1.0
+    bt: float = -1
+    bz: float = -1
+    dst: int = -1
 
 @dataclass
 class CurrentData(BaseData):
     '''current space weather'''
     dt: datetime = datetime.now()
-    r: int = -1
-    r_24h_max: int = -1
-    s: int = -1
-    s_24h_max: int = -1
-    g: int = -1
-    g_24h_max: int = -1
+    r: int = 9
+    s: int = 9
+    g: int = 9
+    r_24h_max: int = 9
+    s_24h_max: int = 9
+    g_24h_max: int = 9
     kp: Kp = '-1'
     ap: int = -1
     sunspots: int = -1
@@ -102,6 +110,7 @@ class CurrentData(BaseData):
     x_flares: int = -1
     regions: Sequence[Region] = ()
     flares: Sequence[Flare] = ()
+    cycle: int = -1
     rotation: int = -1
     wind_speed: float = -1.0
     wind_density: float = -1.0

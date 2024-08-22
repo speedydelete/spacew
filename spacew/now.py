@@ -124,31 +124,15 @@ def regions() -> CurrentData:
         spot_area = sum(region.area for region in regions),
     )
 
-def rotation() -> CurrentData:
-    # CR 2226 started on 2023-1-1 at 9:10 utc
-    # rotations are 27.2753 days long
-    out = datetime.now() - datetime(2023, 1, 1, 9, 10)
-    out = out.days + (out.seconds + out.microseconds / 1e6) / 86400
-    out = out / 27.2753 + 2266
-    return CurrentData(
-        rotation = int(out)
-    )
 
 def dst() -> CurrentData:
     return CurrentData(dst = int(request_json('products/kyoto-dst.json')[-1][1]))
 
 
 def _get() -> BaseData:
-    return util.merge_data(
-        CurrentData(dt=datetime.now()),
-        noaa_scales(),
-        kp_ap(),
-        flares(),
-        regions(),
-        solar(),
-        rotation(),
-        dst(),
-    )
+    return util.merge_data(CurrentData(dt = datetime.now(), cycle = util.cycle(datetime.now()), \
+                           rotation = util.rotation(datetime.now())), noaa_scales(), kp_ap(), \
+                           flares(), regions(), solar(), dst())
 
 def get() -> CurrentData:
     return _get() # type: ignore
