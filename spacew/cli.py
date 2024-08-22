@@ -238,12 +238,13 @@ def main(argv: Sequence[str] = sys.argv, path: str = '.', secure: bool = False) 
         out = archive(args)
     elif cmd in CURRENT_CMDS:
         out = current(args)
-    elif cmd in DISCORD_CMDS and not secure:
-        os.chdir(path)
-        if os.name == 'nt':
-            os.system('py -u discord_bot_main.py')
-        else:
-            os.system('python3 -u discord_bot_main.py')
+    elif cmd in DISCORD_CMDS:
+        if not secure:
+            os.chdir(path)
+            if os.name == 'nt':
+                os.system('py -u discord_bot_main.py')
+            else:
+                os.system('python3 -u discord_bot_main.py')
         return ''
     if args.json or not isinstance(out, str):
         return pprint.pformat(json.loads(json.dumps({
