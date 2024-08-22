@@ -30,8 +30,9 @@ KP_COLOR = {
     '9-': '31', '9': '31', '9+': '31',
 }
 
-C_FLARE_COLOR = ('39', '32', '92', '93', '31')
 RSG_COLOR = {-1: '39', 0: '39', 1: '32', 2: '92', 3: '93', 4: '31', 5: '31'}
+FLUX_COLOR = {'A': '39', 'B': '32', 'C': '92', 'M': '93', 'X': '31'}
+C_FLARE_COLOR = ('39', '32', '92', '93', '31')
 
 def color_log_scale(mul: int | float, add: int | float = 0) -> Callable:
     def wrapper(value: int | float):
@@ -48,7 +49,7 @@ COLOR = {
     'sunspots': color_log_scale(1.45),
     'spot_area': lambda area: color_log_scale(1.25, -2.3)(area*2000000),
     'new_regions': RSG_COLOR.get,
-    'flux': lambda flux: RSG_COLOR[util.flux_to_r(flux)],
+    'flux': lambda flux: FLUX_COLOR[flux[0]],
     'c_flare_count': lambda count: '31' if count > 4 else C_FLARE_COLOR[count],
     'm_flare_count': lambda count: ('31' if count > 1 else '92') if count > 0 else '39',
     'x_flare_count': lambda count: '31' if count > 0 else '39',
@@ -228,7 +229,7 @@ def parse(args: Sequence[str] = sys.argv) -> argparse.Namespace:
     parser.add_argument('-a', '-p', '-ap', '--ap', action='store_true', help='whether to output ap')
     return parser.parse_args(args)
 
-def main(argv: Sequence[str] = sys.argv, path: str = '.', secure: bool = False) -> str:
+def main(argv: Sequence[str] = sys.argv, path: str = '.', secure: bool = False, discord_ansi: bool = False) -> str:
     args = parse(argv)
     cmd = args.command_or_date
     if isinstance(cmd, tuple):
@@ -255,6 +256,8 @@ def main(argv: Sequence[str] = sys.argv, path: str = '.', secure: bool = False) 
     else:
         if args.nocolor:
             out = re.sub(r'\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', out)
+        if discord_ansi:
+            out = re.sub(r'\x1b\[9(\d)m', '\x1b[3\\1m', out)
         return out
 
 
