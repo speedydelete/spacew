@@ -40,6 +40,9 @@ class Config:
     alerts_channel_id: int = -1
     alerts_channel: Channel | None = None
     alerts: Sequence[Alert] = ()
+    commands_enabled: bool = False
+    command_prefix: str = ''
+    commands: dict[str, str] | None = None
 
 
 config = None
@@ -96,6 +99,10 @@ def load() -> Config:
     if key('alerts.enabled'):
         out.alerts_enabled = True
         out = load_alerts(out)
+    if key('commands.enabled'):
+        out.commands_enabled = True
+        out.command_prefix = key('commands.prefix')
+        out.commands = key('commands.commands')
     return out
 
 

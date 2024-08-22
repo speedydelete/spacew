@@ -228,7 +228,7 @@ def parse(args: Sequence[str] = sys.argv) -> argparse.Namespace:
     parser.add_argument('-a', '-p', '-ap', '--ap', action='store_true', help='whether to output ap')
     return parser.parse_args(args)
 
-def main(argv: Sequence[str] = sys.argv, path: str = '.') -> str:
+def main(argv: Sequence[str] = sys.argv, path: str = '.', secure: bool = False) -> str:
     args = parse(argv)
     cmd = args.command_or_date
     if isinstance(cmd, tuple):
@@ -238,7 +238,7 @@ def main(argv: Sequence[str] = sys.argv, path: str = '.') -> str:
         out = archive(args)
     elif cmd in CURRENT_CMDS:
         out = current(args)
-    elif cmd in DISCORD_CMDS:
+    elif cmd in DISCORD_CMDS and not secure:
         os.chdir(path)
         if os.name == 'nt':
             os.system('py -u discord_bot_main.py')

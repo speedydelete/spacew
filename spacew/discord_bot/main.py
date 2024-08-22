@@ -51,11 +51,15 @@ async def on_ready():
 
 
 @client.event
-async def on_message(message):
+async def on_message(message: discord.Message) -> None:
     if message.author == client.user:
         return
-    # if message.content.startswith('$hello'):
-    #     await message.channel.send('Hello!')
+    if config.commands_enabled and message.content.startswith(config.command_prefix):
+        msg = message.content[len(config.command_prefix):]
+        args = msg.split(' ')[1:]
+        for text, command in config.commands.items(): # type: ignore
+            if msg.startswith(text):
+                await message.reply(eval('f"""' + command + '"""'))
 
 
 current = now.get()

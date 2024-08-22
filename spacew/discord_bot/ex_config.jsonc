@@ -24,14 +24,11 @@
             }
         ]
     },
-    "text_commands": {
+    "commands": {
         "enabled": true,
         "prefix": ",", // prefix for commands, set to null to disable
-        "commands": [
-            {
-                "name": "spacew", // name of the command, it can be accessed with /name or <prefix>name
-                "message": "cli.main({args.split(' ')})" // f-string to be run as the message
-            }
-        ]
+        "commands": {
+            "spacew": "{cli.main(args)}" // command: f-string to be used as the message
+        }
     }
 }
