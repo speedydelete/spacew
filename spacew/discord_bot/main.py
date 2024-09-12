@@ -85,7 +85,7 @@ async def alerts():
     if config.alerts_enabled:
         for alert in config.alerts:
             if eval(alert.check):
-                if alert.last_check:
+                if not alert.last_check:
                     log.debug('alerting: %s', alert.desc)
                     await config.alerts_channel.send(alert.message) # type: ignore
                 alert.last_check = True
