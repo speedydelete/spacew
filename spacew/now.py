@@ -19,12 +19,13 @@ def noaa_scales() -> CurrentData:
     )
 
 def kp_ap() -> CurrentData:
-    data = request('https://kp.gfz-potsdam.de/app/files/Kp_ap_nowcast.txt')
-    data = load_txt_data(data, date.today(), date.today() + timedelta(days=1), mul=8)
-    data = [line[7:9] for line in data]
-    while data[-1][0] == '-1.000':
-        data.pop()
-    return CurrentData(kp=util.float_to_kp(data[-1][0]), ap=int(data[-1][1]))
+    kp_data = request_json('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json')
+    ap_data = request('https://kp.gfz-potsdam.de/app/files/Kp_ap_nowcast.txt')
+    ap_data = load_txt_data(ap_data, date.today(), date.today() + timedelta(days=1), mul=8)
+    ap_data = [line[7:9] for line in ap_data]
+    while ap_data[-1][0] == '-1.000':
+        ap_data.pop()
+    return CurrentData(kp=util.float_to_kp(kp_data[-1][1]), ap=int(ap_data[-1][1]))
 
 def solar() -> CurrentData:
     solar_wind = request_json('products/geospace/propagated-solar-wind-1-hour.json')[-1]

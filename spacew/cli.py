@@ -101,17 +101,18 @@ def format_current_data_text(info: CurrentData, flags: int) -> str:
     out += f'{color(info.s_24h_max, 'rsg', before='S')} '
     out += f'{color(info.g_24h_max, 'rsg', before='G')})\n'
     if flags & EARTH:
-        out += f'kp{color(info.kp, 'kp')} {f'(ap: {color(info.ap, 'ap')})' if flags & AP else ''}, '
-        out += f'bt: {info.bt}, bz: {info.bz}, dst: {info.dst}\n'
+        out += f'{color(info.kp, 'kp', before='Kp')}{f' (ap: {color(info.ap, 'ap')})' if flags & AP else ''}, '
+        out += f'Bt: {info.bt}, Bz: {info.bz}, Dst: {info.dst}\n'
     if flags & SUN:
         out += f'{color(info.sunspots, 'sunspots')} sunspots\n'
         out += f'10.7cm radio flux: {color(info.f107, 'sfu')} sfu\n'
-        out += f'x-ray flux: {color(info.flux, 'flux')} '
+        out += f'X-ray flux: {color(info.flux, 'flux')} '
         out += f'(2h max: {color(info.flux_2h_max, 'flux')}, 24h max: {color(info.flux_24h_max, 'flux')})\n'
-        out += f'flares today: {color(info.c_flares, 'c_flare_count')} c-class, '
+        out += f'Flares today: {color(info.c_flares, 'c_flare_count')} c-class, '
         out += f'{color(info.m_flares, 'm_flare_count')} m-class, and {color(info.x_flares, 'x_flare_count')} x-class\n'
-        out += f'solar cycle {info.cycle}, carrington rotation {info.rotation}\n'
-        out += f'solar wind: speed: {info.wind_speed} km/s, density: {info.wind_density} p/cm^3'
+        out += f'Solar cycle {info.cycle}, carrington rotation {info.rotation}\n'
+        out += f'Solar wind speed: {info.wind_speed} km/s\n'
+        out += f'Solar wind density: {info.wind_density} p/cm^3'
     return out
 
 def format_mdd_table(data: MultiDayData, flags: int) -> str:
