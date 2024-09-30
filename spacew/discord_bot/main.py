@@ -84,9 +84,10 @@ async def status():
 async def alerts():
     if config.alerts_enabled:
         for alert in config.alerts:
-            if eval(alert.check) and not alert.last_check:
-                log.debug('alerting: %s', alert.desc)
-                await config.alerts_channel.send(alert.message) # type: ignore
+            if eval(alert.check):
+                if not alert.last_check:
+                    log.debug('alerting: %s', alert.desc)
+                    await config.alerts_channel.send(alert.message) # type: ignore
                 alert.last_check = True
             else:
                 alert.last_check = False
