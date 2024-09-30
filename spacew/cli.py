@@ -2,7 +2,7 @@
 '''spacew command line interface'''
 
 from typing import Any, Callable, Sequence
-from datetime import date as date, timedelta
+from datetime import date, timedelta
 import math
 import re
 import json
@@ -179,7 +179,7 @@ def format_day_data_text(info: DayData, flags: int) -> str:
     out += f'{color(info.s_max, 'rsg', before='S')} '
     out += f'{color(info.g_max, 'rsg', before='G')})\n'
     if flags & EARTH:
-        out += f'   00  03  06  09  12  15  18  21\n'
+        out += '   00  03  06  09  12  15  18  21\n'
         out += f'kp {' '.join([kp.ljust(3) for kp in info.kps])}\n'
         if flags & AP:
             out += f'ap {' '.join([str(ap).ljust(3) for ap in info.aps])}\n'

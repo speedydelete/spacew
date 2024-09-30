@@ -2,7 +2,6 @@
 '''gets past space weather data'''
 
 from datetime import date, timedelta
-from dataclasses import asdict
 from datatypes import DayData, MultiDayData
 import util
 from apis import request, swpc_ftp_file, load_txt_data

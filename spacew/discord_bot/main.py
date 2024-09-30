@@ -4,13 +4,13 @@
 # pylint: disable=eval-used
 
 import logging
+import importlib
 import discord
 from discord.ext import tasks
 # these 2 lines fail when this is run directly
 # but work when this is run by discord_bot_main.py
 import discord_bot.config as config_parser
 import now
-import importlib
 
 
 log = logging.getLogger('spacew_bot')
@@ -56,7 +56,7 @@ async def on_message(message: discord.Message) -> None:
         return
     if config.commands_enabled and message.content.startswith(config.command_prefix):
         msg = message.content[len(config.command_prefix):]
-        args = msg.split(' ')[1:]
+        args = msg.split(' ')[1:] # type: ignore # pylint: disable=unused-variable
         for text, command in config.commands.items(): # type: ignore
             if msg.startswith(text):
                 await message.reply(eval('f"""' + command + '"""'))
