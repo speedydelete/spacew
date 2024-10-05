@@ -52,8 +52,8 @@ AP = 32
 MODE_FLAG_MAP = {
     'default': EARTH | SUN,
     'earth': EARTH | HOUR,
-    'sun': SUN | FLARES,
-    'all': EARTH | HOUR | SUN | FLARES,
+    'sun': SUN | REGIONS | FLARES,
+    'all': EARTH | HOUR | SUN | REGIONS | FLARES,
 }
 
 
@@ -112,8 +112,13 @@ def format_current_data_text(info: CurrentData, flags: int) -> str:
         out += f'{color(info.m_flares, 'm_flare_count')} m-class, and {color(info.x_flares, 'x_flare_count')} x-class\n'
         out += f'Solar cycle {info.cycle}, Carrington rotation {info.rotation}\n'
         out += f'Solar wind speed: {info.wind_speed} km/s\n'
-        out += f'Solar wind density: {info.wind_density} p/cm^3'
-    return out
+        out += f'Solar wind density: {info.wind_density} p/cm^3\n'
+    # if flags & REGIONS:
+    #     out += 'Active regions:\n'
+    #     out += 'region location spots area class_mag C  M  X  C% M% X%\n'
+    #     for region in info.regions:
+    #         out += f'{str(region.id).ljust(6)} {region.latitude} {region.longitude}'
+    return out.rstrip('\n')
 
 def format_mdd_table(data: MultiDayData, flags: int) -> str:
     out = '\x1b[96mdate       '
