@@ -21,7 +21,7 @@ import util
 VERSION = '1.0'
 
 KP_COLOR = {
-    '0': '39', '0+': '39',
+    None: '39', '0': '39', '0+': '39',
     '1-': '39', '1': '39', '1+': '39',
     '2-': '32', '2': '32', '2+': '32',
     '3-': '32', '3': '32', '3+': '32',
@@ -72,10 +72,10 @@ COLOR = {
     'sunspots': color_log_scale(1.45),
     'spot_area': lambda area: color_log_scale(1.25, -2.3)(area*2000000),
     'new_regions': RSG_COLOR.get,
-    'flux': lambda flux: FLUX_COLOR[flux[0]],
-    'c_flare_count': lambda count: '31' if count > 4 else C_FLARE_COLOR[count],
-    'm_flare_count': lambda count: ('31' if count > 1 else '92') if count > 0 else '39',
-    'x_flare_count': lambda count: '31' if count > 0 else '39',
+    'flux': lambda flux: '39' if flux is None else FLUX_COLOR[flux[0]],
+    'c_flare_count': lambda count: '39' if count is None else ('31' if count > 4 else C_FLARE_COLOR[count]),
+    'm_flare_count': lambda count: '39' if count is None else (('31' if count > 1 else '92') if count > 0 else '39'),
+    'x_flare_count': lambda count: '39' if count is None else ('31' if count > 0 else '39'),
 }
 
 def color(value: Any, map_name: str, width: int | None = None, actual: str | None = None, \
@@ -108,9 +108,9 @@ def format_current_data_text(info: CurrentData, flags: int) -> str:
         out += f'10.7cm radio flux: {color(info.f107, 'sfu')} sfu\n'
         out += f'X-ray flux: {color(info.flux, 'flux')} '
         out += f'(2h max: {color(info.flux_2h_max, 'flux')}, 24h max: {color(info.flux_24h_max, 'flux')})\n'
-        out += f'Flares today: {color(info.c_flares, 'c_flare_count')} c-class, '
+        out += f'Flares in past 24 hours: {color(info.c_flares, 'c_flare_count')} c-class, '
         out += f'{color(info.m_flares, 'm_flare_count')} m-class, and {color(info.x_flares, 'x_flare_count')} x-class\n'
-        out += f'Solar cycle {info.cycle}, carrington rotation {info.rotation}\n'
+        out += f'Solar cycle {info.cycle}, Carrington rotation {info.rotation}\n'
         out += f'Solar wind speed: {info.wind_speed} km/s\n'
         out += f'Solar wind density: {info.wind_density} p/cm^3'
     return out
@@ -139,13 +139,14 @@ def format_mdd_table(data: MultiDayData, flags: int) -> str:
             out += f'{color(avg_kp, 'kp', 2)} {color(min_kp, 'kp', 2)} {color(max_kp, 'kp', 2)} '
             out += f'9{color(util.flux_to_r(info.bg_flux), 'rsg', 1)}'
             out += f'{color(util.flux_to_r(info.max_flux), 'rsg', 1)} '
-            #out += f'{color(util.pfu_to_s(info.flux_p_10mev), 'rsg', 1)}99 '
+            # out += f'{color(util.pfu_to_s(info.flux_p_10mev), 'rsg', 1)}99 '
             out += '999 '
             out += f'{color(util.kp_to_g(avg_kp), 'rsg', 1)}'
             out += f'{color(util.kp_to_g(min_kp), 'rsg', 1)}'
             out += f'{color(util.kp_to_g(max_kp), 'rsg', 1)} '
             if flags & AP:
-                ap, min_ap, max_ap = round(sum(info.aps)/len(info.aps)), min(info.aps), max(info.aps)
+                aps = [0 if ap is None else ap for ap in info.aps]
+                ap, min_ap, max_ap = round(sum(aps)/len(info.aps)), min(aps), max(aps)
                 out += f'{color(ap, 'ap', 3)}{color(min_ap, 'ap', 3)}{color(max_ap, 'ap', 3)}'
             if flags & HOUR:
                 if flags & AP:
@@ -155,8 +156,7 @@ def format_mdd_table(data: MultiDayData, flags: int) -> str:
                     for h_kp in info.kps:
                         out += f'{color(h_kp, 'kp', 2)} '
         if flags & SUN:
-            spot_area = f'{format(info.spot_area*100, f'<6.{math.ceil(-math.log(info.spot_area*100))}f').rstrip()}%'
-            out += f'{color(info.sunspots, 'sunspots', 5)} {color(info.spot_area, 'spot_area', 7, actual=spot_area)} '
+            out += f'{color(info.sunspots, 'sunspots', 5)} {color(info.spot_area, 'spot_area', 7)} '
             out += f'{color(info.f107, 'sfu', 5)} {color(info.new_regions, 'new_regions', 4)} '
             out += f'{color(info.bg_flux, 'flux', 6)} {color(info.max_flux, 'flux', 6)} '
             out += f'{color(info.c_flares, 'c_flare_count', 2)} '
@@ -168,8 +168,11 @@ def format_mdd_table(data: MultiDayData, flags: int) -> str:
                 pass
     return out + '\n'
 
-def format_day_data_text(info: DayData, flags: int) -> str:
-    out = f'space weather conditions at {info.day.strftime('%Y-%m-%d %H:%M:%S')}:\n'
+def format_day_data_text(info: DayData, flags: int, include_time: bool = True) -> str:
+    if include_time:
+        out = f'space weather conditions at {info.day.strftime('%Y-%m-%d %H:%M:%S')}:\n'
+    else:
+        out = f'space weather conditions on {info.day.strftime('%Y-%m-%d')}:\n'
     out += f'{color(info.r_avg, 'rsg', before='R')} '
     out += f'{color(info.s_avg, 'rsg', before='S')} '
     out += f'{color(info.g_avg, 'rsg', before='G')} '
@@ -181,13 +184,13 @@ def format_day_data_text(info: DayData, flags: int) -> str:
     out += f'{color(info.g_max, 'rsg', before='G')})\n'
     if flags & EARTH:
         out += '   00  03  06  09  12  15  18  21\n'
-        out += f'kp {' '.join([kp.ljust(3) for kp in info.kps])}\n'
+        out += f'kp {' '.join([str(kp).ljust(3) for kp in info.kps])}\n'
         if flags & AP:
             out += f'ap {' '.join([str(ap).ljust(3) for ap in info.aps])}\n'
         out += f'bt: {info.bt}, bz: {info.bz}, dst: {info.dst}\n'
     if flags & SUN:
         out += f'{color(info.sunspots, 'sunspots')} sunspots'
-        out += f' ({color(info.spot_area, 'spot_area', actual=str(info.spot_area*100))}%)\n'
+        out += f' ({color(info.spot_area, 'spot_area')}%)\n'
         out += f'10.7cm radio flux: {color(info.f107, 'sfu')} sfu\n'
         out += f'background flux: {color(info.bg_flux, 'flux')}, max flux: {color(info.max_flux, 'flux')}\n'
         out += f'flares: {color(info.c_flares, 'c_flare_count')} c-class, '
@@ -266,7 +269,7 @@ def main(argv: Sequence[str] = sys.argv, path: str = '.', secure: bool = False, 
         if args.json:
             out = {key: asdict(value) for key, value in data.items()}
         elif len(data) == 1:
-            out = format_day_data_text(data[next(iter(data))], flags)
+            out = format_day_data_text(data[next(iter(data))], flags, include_time=False)
         else:
             out = format_mdd_table(data, flags)
     elif cmd in CURRENT_CMDS:

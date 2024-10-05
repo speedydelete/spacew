@@ -69,7 +69,7 @@ def compare_kp(kp1: Kp, kp2: Kp, op: Operation) -> bool:
     return eval(str(x) + op + str(y))
 
 def average_kp(*kps: Kp) -> Kp | None:
-    return float_to_kp(sum(map(kp_to_float, kps))/len(kps))
+    return ap_to_kp(round(sum(0 if kp is None else kp for kp in map(kp_to_ap, kps))/len(kps)))
 
 def sort_kps(*args: Kp) -> tuple[Kp, ...]:
     kps = list(args)

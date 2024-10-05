@@ -107,6 +107,7 @@ class CurrentData(BaseData):
     flux: Flux = None
     flux_2h_max: Flux = None
     flux_24h_max: Flux = None
+    flux_72h_max: Flux = None
     c_flares: int | None = None
     m_flares: int | None = None
     x_flares: int | None = None

@@ -1,7 +1,8 @@
 
 '''interaction with space weather API's'''
 
-from typing import Any
+from typing import Any, Sequence
+from types import UnionType
 from datetime import date
 import os
 import ftplib
@@ -52,23 +53,30 @@ def load_txt_data(data: str, start: date, end: date, first: date | None = None, 
 
 
 def validate(data: Any, schema: Any) -> bool:
-    if isinstance(schema, dict):
-        if not isinstance(data, dict):
-            return False
-        for key, value in schema.items():
-            if key not in data:
-                return False
-            if not validate(data[key], value):
-                return False
-    elif isinstance(schema, list):
-        if not isinstance(data, list) or len(schema) != len(data):
-            return False
-        for item in schema:
-            if not validate(data[item], item):
-                return False
-    elif isinstance(schema, type):
+    if isinstance(schema, type | UnionType):
         if not isinstance(data, schema):
             return False
+    elif isinstance(schema, dict):
+        if isinstance(data, dict):
+            for key, value in schema.items():
+                if key not in data:
+                    return False
+                if not validate(data[key], value):
+                    return False
+        elif isinstance(data, Sequence):
+            for key, value in schema.items():
+                if key >= len(data) or key < -len(data):
+                    return False
+                if not validate(data[key], value):
+                    return False
+        else:
+            return False
+    elif isinstance(schema, Sequence):
+        if not isinstance(data, Sequence) or len(schema) != len(data):
+            return False
+        for item, item_schema in zip(data, schema):
+            if not validate(item, item_schema):
+                return False
     else:
         raise ValueError(f'invalid schema: {schema!r}')
     return True

@@ -1,101 +1,18 @@
 
 '''current space weather data'''
 
-from typing import Any
-from datetime import datetime, date, timedelta, timezone
-from datatypes import BaseData, Region, Flare, CurrentData
+from typing import Sequence
+from datetime import datetime, timezone
+from datatypes import Region, Flare, CurrentData
 import util
-from apis import request, request_json, load_txt_data, validate
+from apis import request, request_json, validate
 
 
-NOAA_SCALES_SCHEMA = {'0': {'R': {'Scale': Any}, 'S': {'Scale': Any}, 'G': {'Scale': Any}}, \
-                      '-1': {'R': {'Scale': Any}, 'S': {'Scale': Any}, 'G': {'Scale': Any}}}
+NOAA_SCALES_SCHEMA = {'0': {'R': {'Scale': str}, 'S': {'Scale': str}, 'G': {'Scale': str}}, \
+                      '-1': {'R': {'Scale': str}, 'S': {'Scale': str}, 'G': {'Scale': str}}}
+SOLAR_WIND_DATA_SCHEMA = {-1: [str, str, str, str, str, str, str, str, str | None, str | None, str | None, str]}
 
-def noaa_scales() -> CurrentData:
-    data = request_json('products/noaa-scales.json')
-    if validate(data, NOAA_SCALES_SCHEMA):
-        return CurrentData(
-            r = int(data['0']['R']['Scale']),
-            r_24h_max = int(data['-1']['R']['Scale']),
-            s = int(data['0']['S']['Scale']),
-            s_24h_max = int(data['-1']['S']['Scale']),
-            g = int(data['0']['G']['Scale']),
-            g_24h_max = int(data['-1']['G']['Scale']),
-        )
-    else:
-        return CurrentData()
-
-def kp_ap() -> CurrentData:
-    kp_data = request_json('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json')
-    if not validate(kp_data, {-1: [Any, Any, Any, Any]}):
-        kp_data = {-1: [None, None, None, None]}
-    ap_data = request('https://kp.gfz-potsdam.de/app/files/Kp_ap_nowcast.txt')
-    ap_data = load_txt_data(ap_data, date.today(), date.today() + timedelta(days=1), mul=8)
-    ap_data = [line[7:9] for line in ap_data]
-    while ap_data[-1][0] == '-1.000':
-        ap_data.pop()
-    return CurrentData(kp=util.float_to_kp(kp_data[-1][1]), ap=int(ap_data[-1][1]))
-
-def solar() -> CurrentData:
-    solar_wind = request_json('products/geospace/propagated-solar-wind-1-hour.json')[-1]
-    if solar_wind[6] is None:
-        solar_wind[6] = -1
-    if solar_wind[7] is None:
-        solar_wind[7] = -1
-    f107 = request_json('products/summary/10cm-flux.json')
-    if 'Flux' in f107:
-        f107 = int(f107['Flux'])
-    else:
-        f107 = -1
-    return CurrentData(
-        sunspots = int(request('https://www.sidc.be/SILSO/DATA/EISN/EISN_current.txt').split('\n')[-2][20:23]),
-        f107 = f107,
-        wind_speed = float(solar_wind[1]),
-        wind_density = float(solar_wind[2]),
-        bt = float(solar_wind[7]),
-        bz = float(solar_wind[6]),
-    )
-
-def flares() -> CurrentData:
-    dt_now = datetime.now(tz=timezone.utc)
-    flux_now = request_json('json/goes/primary/xray-flares-latest.json')[0]['current_class']
-    flares = request_json('json/goes/primary/xray-flares-7-day.json')
-    flares = [Flare(
-        start_time=datetime.fromisoformat(flare['begin_time']),
-        start_flux=flare['begin_class'],
-        max_time=datetime.fromisoformat(flare['max_time']),
-        max_flux=flare['max_class'],
-        end_time=datetime.fromisoformat(flare['end_time']),
-        end_flux=flare['end_class'],
-    ) for flare in flares if (dt_now - datetime.fromisoformat(flare['begin_time'])).days == 0]
-    flux_24h_max = flux_now
-    flux_2h_max = flux_now
-    c_flares = 0
-    m_flares = 0
-    x_flares = 0
-    for flare in flares:
-        match flare.max_flux[0]:
-            case 'C':
-                c_flares += 1
-            case 'M':
-                m_flares += 1
-            case 'X':
-                x_flares += 1
-        if (dt_now - flare.max_time).days == 0 and util.compare_flux(flux_24h_max, flare.max_flux, '<'):
-            flux_24h_max = flare.max_flux
-        if (dt_now - flare.max_time).seconds < 7200 and util.compare_flux(flux_2h_max, flare.max_flux, '<'):
-            flux_2h_max = flare.max_flux
-    return CurrentData(
-        flux = flux_now,
-        flux_24h_max = flux_24h_max,
-        flux_2h_max = flux_2h_max,
-        c_flares = c_flares,
-        m_flares = m_flares,
-        x_flares = x_flares,
-        flares = flares,
-    )
-
-def regions() -> CurrentData:
+def get_regions() -> Sequence[Region]:
     regions = request_json('json/solar_regions.json')
     regions = [Region(
         id = region['region'],
@@ -133,21 +50,86 @@ def regions() -> CurrentData:
     ) for region in regions]
     regions = {region.id: region for region in regions}
     regions = list(regions.values())
-    regions.sort(key = lambda region: -region.id)
+    regions.sort(key = lambda region: 0 if region.id is None else -region.id)
+    return regions
+
+def get_flares() -> CurrentData:
+    dt_now = datetime.now(tz=timezone.utc)
+    flux_now = request_json('json/goes/primary/xray-flares-latest.json')[0]['current_class']
+    flares = request_json('json/goes/primary/xray-flares-7-day.json')
+    flares = [Flare(
+        start_time = datetime.fromisoformat(flare['begin_time']),
+        start_flux = flare['begin_class'],
+        max_time = datetime.fromisoformat(flare['max_time']) if flare['max_time'] is not None else None,
+        max_flux = flare['max_class'],
+        end_time = datetime.fromisoformat(flare['end_time']),
+        end_flux = flare['end_class'],
+    ) for flare in flares if (dt_now - datetime.fromisoformat(flare['begin_time'])).days == 0]
+    flux_72h_max = flux_now
+    flux_24h_max = flux_now
+    flux_2h_max = flux_now
+    c_flares = 0
+    m_flares = 0
+    x_flares = 0
+    for flare in flares:
+        if flare.max_time is None or flare.max_flux is None:
+            continue
+        match flare.max_flux[0]:
+            case 'C':
+                c_flares += 1
+            case 'M':
+                m_flares += 1
+            case 'X':
+                x_flares += 1
+        diff = dt_now - flare.max_time
+        if diff.days < 3 and util.compare_flux(flux_24h_max, flare.max_flux, '<'):
+            flux_72h_max = flare.max_flux
+        if diff.days == 0 and util.compare_flux(flux_24h_max, flare.max_flux, '<'):
+            flux_24h_max = flare.max_flux
+        if diff.seconds < 7200 and util.compare_flux(flux_2h_max, flare.max_flux, '<'):
+            flux_2h_max = flare.max_flux
     return CurrentData(
-        regions = regions,
-        spot_area = sum(region.area for region in regions),
+        flux = flux_now,
+        flux_72h_max = flux_72h_max,
+        flux_24h_max = flux_24h_max,
+        flux_2h_max = flux_2h_max,
+        c_flares = c_flares,
+        m_flares = m_flares,
+        x_flares = x_flares,
+        flares = flares,
     )
 
-
-def dst() -> CurrentData:
-    return CurrentData(dst = int(request_json('products/kyoto-dst.json')[-1][1]))
-
-
-def _get() -> BaseData:
-    return util.merge_data(CurrentData(dt = datetime.now(), cycle = util.cycle(datetime.now()), \
-                           rotation = util.rotation(datetime.now())), noaa_scales(), kp_ap(), \
-                           flares(), regions(), solar(), dst())
-
 def get() -> CurrentData:
-    return _get() # type: ignore
+    out = CurrentData()
+    out.dt = datetime.now()
+    out.cycle = util.cycle(out.dt)
+    out.rotation = util.rotation(out.dt)
+    noaa_scales = request_json('products/noaa-scales.json')
+    if validate(noaa_scales, NOAA_SCALES_SCHEMA):
+        out.r = int(noaa_scales['0']['R']['Scale'])
+        out.r_24h_max = int(noaa_scales['-1']['R']['Scale'])
+        out.s = int(noaa_scales['0']['S']['Scale'])
+        out.s_24h_max = int(noaa_scales['-1']['S']['Scale'])
+        out.g = int(noaa_scales['0']['G']['Scale'])
+        out.g_24h_max = int(noaa_scales['-1']['G']['Scale'])
+    kp_ap_data = request_json('products/noaa-planetary-k-index.json')
+    if validate(kp_ap_data, {-1: [str, str, str, str]}):
+        out.kp = util.float_to_kp(kp_ap_data[-1][1])
+        out.ap = int(kp_ap_data[-1][2])
+    dst_data = request_json('products/kyoto-dst.json')
+    if validate(dst_data, {-1: [str, str]}):
+        out.dst = int(dst_data[-1][1])
+    solar_wind_data = request_json('products/geospace/propagated-solar-wind-1-hour.json')
+    if validate(solar_wind_data, SOLAR_WIND_DATA_SCHEMA):
+        solar_wind_data = solar_wind_data[-1]
+        out.wind_speed = float(solar_wind_data[1])
+        out.wind_density = float(solar_wind_data[2])
+        out.bz = float(solar_wind_data[6])
+        out.bt = float(solar_wind_data[7])
+    out.sunspots = int(request('https://www.sidc.be/SILSO/DATA/EISN/EISN_current.txt').split('\n')[-2][20:23])
+    f107_data = request_json('products/summary/10cm-flux.json')
+    if validate(f107_data, {'Flux': str}):
+        out.f107 = int(f107_data['Flux'])
+    out.regions = get_regions()
+    out = util.merge_data(out, get_flares())
+    return out # type: ignore
