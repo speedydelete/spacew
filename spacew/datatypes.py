@@ -2,21 +2,23 @@
 '''various types and dataclasses'''
 
 from typing import Literal, Sequence
-from datetime import date, time, datetime
+from datetime import date, datetime
 from dataclasses import dataclass
 
 
-type RSG = Literal[9, 0, 1, 2, 3, 4, 5]
+type RSG = Literal[9, 0, 1, 2, 3, 4, 5] | None
 
-type Flux = str
+type Flux = str | None
 
-type Kp = Literal['-1', '0', '0+', '1-', '1', '1+',
-                  '2-', '2', '2+', '3-', '3', '3+', 
-                  '4-', '4', '4+', '5-', '5', '5+', 
-                  '6-', '6', '6+', '7-', '7', '7+', 
-                  '8-', '8', '8+', '9-', '9', '9+']
+type KpNotNone = Literal['-1', '0', '0+', '1-', '1', '1+',
+                         '2-', '2', '2+', '3-', '3', '3+', 
+                         '4-', '4', '4+', '5-', '5', '5+', 
+                         '6-', '6', '6+', '7-', '7', '7+', 
+                         '8-', '8', '8+', '9-', '9', '9+']
+type Kp = KpNotNone | None
 
-type Ap = int
+type ApNotNone = int
+type Ap = int | None
 
 
 @dataclass
@@ -26,97 +28,97 @@ class BaseData:
 @dataclass
 class Region(BaseData):
     '''active region data'''
-    id: int = -1
-    latitude: int = -1
-    longitude: int = -1
-    carrington_longitude: int = -1
-    status: str = ''
-    sunspots: int = -1
-    area: float = -1.0
-    spot_class: str = ''
-    magnitude: str = ''
-    c_flares: int = -1
-    m_flares: int = -1
-    x_flares: int = -1
-    c_flare_prob: int = -1
-    m_flare_prob: int = -1
-    x_flare_prob: int = -1
+    id: int | None = None
+    latitude: int | None = None
+    longitude: int | None = None
+    carrington_longitude: int | None = None
+    status: str | None = None
+    sunspots: int | None = None
+    area: float | None = None
+    spot_class: str | None = None
+    magnitude: str | None = None
+    c_flares: int | None = None
+    m_flares: int | None = None
+    x_flares: int | None = None
+    c_flare_prob: int | None = None
+    m_flare_prob: int | None = None
+    x_flare_prob: int | None = None
 
 @dataclass
 class Flare(BaseData):
     '''solar flare data'''
-    start_time: datetime = datetime(9999, 12, 31)
-    start_flux: str = ''
-    max_time: datetime = datetime(9999, 12, 31)
-    max_flux: str = ''
-    end_time: datetime = datetime(9999, 12, 31)
-    end_flux: str = ''
+    start_time: datetime | None = None
+    start_flux: str | None = None
+    max_time: datetime | None = None
+    max_flux: str | None = None
+    end_time: datetime | None = None
+    end_flux: str | None = None
 
 @dataclass
 class DayData(BaseData):
     '''space weather for a previous day'''
     day: date = date(9999, 12, 31)
-    r_avg: RSG = 9
-    r_min: RSG = 9
-    r_max: RSG = 9
-    s_avg: RSG = 9
-    s_min: RSG = 9
-    s_max: RSG = 9
-    g_avg: RSG = 9
-    g_min: RSG = 9
-    g_max: RSG = 9
+    r_avg: RSG | None = None
+    r_min: RSG | None = None
+    r_max: RSG | None = None
+    s_avg: RSG | None = None
+    s_min: RSG | None = None
+    s_max: RSG | None = None
+    g_avg: RSG | None = None
+    g_min: RSG | None = None
+    g_max: RSG | None = None
     kps: Sequence[Kp] = ()
     aps: Sequence[Ap] = ()
-    sunspots: int = -1
-    spot_area: float = -1
-    f107: float = -1
-    new_regions: int = -1
-    bg_flux: Flux = ''
-    max_flux: Flux = ''
-    c_flares: int = -1
-    m_flares: int = -1
-    x_flares: int = -1
+    sunspots: int | None = None
+    spot_area: float | None = None
+    f107: float | None = None
+    new_regions: int | None = None
+    bg_flux: Flux = None
+    max_flux: Flux = None
+    c_flares: int | None = None
+    m_flares: int | None = None
+    x_flares: int | None = None
     regions: Sequence[Region] = ()
     flares: Sequence[Flare] = ()
-    cycle: int = -1
-    rotation: int = -1
-    wind_speed: float = -1.0
-    wind_density: float = -1.0
-    bt: float = -1
-    bz: float = -1
-    dst: int = -1
+    cycle: int | None = None
+    rotation: int | None = None
+    wind_speed: float | None = None
+    wind_density: float | None = None
+    bt: float | None = None
+    bz: float | None = None
+    dst: int | None = None
 
 @dataclass
 class CurrentData(BaseData):
     '''current space weather'''
     dt: datetime = datetime.now()
-    r: int = 9
-    s: int = 9
-    g: int = 9
-    r_24h_max: int = 9
-    s_24h_max: int = 9
-    g_24h_max: int = 9
-    kp: Kp = '-1'
-    ap: int = -1
-    sunspots: int = -1
-    f107: float = -1.0
-    spot_area: float = -1.0
-    new_regions: int = -1
-    flux: Flux = ''
-    flux_2h_max: Flux = ''
-    flux_24h_max: Flux = ''
-    c_flares: int = -1
-    m_flares: int = -1
-    x_flares: int = -1
+    r: int | None = None
+    s: int | None = None
+    g: int | None = None
+    r_24h_max: int | None = None
+    s_24h_max: int | None = None
+    g_24h_max: int | None = None
+    kp: Kp = None
+    ap: int | None = None
+    sunspots: int | None = None
+    f107: float | None = None
+    spot_area: float | None = None
+    new_regions: int | None = None
+    flux: Flux = None
+    flux_2h_max: Flux = None
+    flux_24h_max: Flux = None
+    c_flares: int | None = None
+    m_flares: int | None = None
+    x_flares: int | None = None
     regions: Sequence[Region] = ()
     flares: Sequence[Flare] = ()
-    cycle: int = -1
-    rotation: int = -1
-    wind_speed: float = -1.0
-    wind_density: float = -1.0
-    bt: float = -1
-    bz: float = -1
-    dst: int = -1
+    cycle: int | None = None
+    rotation: int | None = None
+    wind_speed: float | None = None
+    wind_density: float | None = None
+    bt: float | None = None
+    bz: float | None = None
+    dst: int | None = None
 
 
 type MultiDayData = dict[date, DayData]

@@ -1,25 +1,34 @@
 
 '''current space weather data'''
 
+from typing import Any
 from datetime import datetime, date, timedelta, timezone
 from datatypes import BaseData, Region, Flare, CurrentData
 import util
-from apis import request, request_json, load_txt_data
+from apis import request, request_json, load_txt_data, validate
 
+
+NOAA_SCALES_SCHEMA = {'0': {'R': {'Scale': Any}, 'S': {'Scale': Any}, 'G': {'Scale': Any}}, \
+                      '-1': {'R': {'Scale': Any}, 'S': {'Scale': Any}, 'G': {'Scale': Any}}}
 
 def noaa_scales() -> CurrentData:
     data = request_json('products/noaa-scales.json')
-    return CurrentData(
-        r = int(data['0']['R']['Scale']),
-        r_24h_max = int(data['-1']['R']['Scale']),
-        s = int(data['0']['S']['Scale']),
-        s_24h_max = int(data['-1']['S']['Scale']),
-        g = int(data['0']['G']['Scale']),
-        g_24h_max = int(data['-1']['G']['Scale']),
-    )
+    if validate(data, NOAA_SCALES_SCHEMA):
+        return CurrentData(
+            r = int(data['0']['R']['Scale']),
+            r_24h_max = int(data['-1']['R']['Scale']),
+            s = int(data['0']['S']['Scale']),
+            s_24h_max = int(data['-1']['S']['Scale']),
+            g = int(data['0']['G']['Scale']),
+            g_24h_max = int(data['-1']['G']['Scale']),
+        )
+    else:
+        return CurrentData()
 
 def kp_ap() -> CurrentData:
     kp_data = request_json('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json')
+    if not validate(kp_data, {-1: [Any, Any, Any, Any]}):
+        kp_data = {-1: [None, None, None, None]}
     ap_data = request('https://kp.gfz-potsdam.de/app/files/Kp_ap_nowcast.txt')
     ap_data = load_txt_data(ap_data, date.today(), date.today() + timedelta(days=1), mul=8)
     ap_data = [line[7:9] for line in ap_data]
@@ -33,9 +42,14 @@ def solar() -> CurrentData:
         solar_wind[6] = -1
     if solar_wind[7] is None:
         solar_wind[7] = -1
+    f107 = request_json('products/summary/10cm-flux.json')
+    if 'Flux' in f107:
+        f107 = int(f107['Flux'])
+    else:
+        f107 = -1
     return CurrentData(
         sunspots = int(request('https://www.sidc.be/SILSO/DATA/EISN/EISN_current.txt').split('\n')[-2][20:23]),
-        f107 = int(request_json('products/summary/10cm-flux.json')['Flux']),
+        f107 = f107,
         wind_speed = float(solar_wind[1]),
         wind_density = float(solar_wind[2]),
         bt = float(solar_wind[7]),
@@ -92,7 +106,7 @@ def regions() -> CurrentData:
         magnitude = region['mag_class'],
         sunspots = region['number_spots'],
         spot_class = region['spot_class'],
-        area = (region['area'] if region['area'] != None else 0)/1000000,
+        area = (region['area'] if region['area'] is not None else 0)/1000000,
         c_flares = region['c_xray_events'],
         m_flares = region['m_xray_events'],
         x_flares = region['x_xray_events'],

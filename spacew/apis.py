@@ -49,3 +49,26 @@ def load_txt_data(data: str, start: date, end: date, first: date | None = None, 
     if out[-1] == []:
         out = out[:-mul]
     return out
+
+
+def validate(data: Any, schema: Any) -> bool:
+    if isinstance(schema, dict):
+        if not isinstance(data, dict):
+            return False
+        for key, value in schema.items():
+            if key not in data:
+                return False
+            if not validate(data[key], value):
+                return False
+    elif isinstance(schema, list):
+        if not isinstance(data, list) or len(schema) != len(data):
+            return False
+        for item in schema:
+            if not validate(data[item], item):
+                return False
+    elif isinstance(schema, type):
+        if not isinstance(data, schema):
+            return False
+    else:
+        raise ValueError(f'invalid schema: {schema!r}')
+    return True

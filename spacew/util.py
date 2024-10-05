@@ -7,7 +7,7 @@ from typing import Literal
 from datetime import datetime
 import math
 from dataclasses import asdict
-from datatypes import Kp, Ap, RSG, Flux, BaseData, MultiDayData
+from datatypes import KpNotNone, Kp, ApNotNone, Ap, RSG, Flux, BaseData, MultiDayData
 
 
 type Operation = Literal['==', '!=', '>', '>=', '<', '<=']
@@ -16,7 +16,7 @@ def assert_operation(op: Operation):
     assert op in ('==', '!=', '>', '>=', '<', '<=')
 
 
-_KP_TO_AP: dict[Kp, Ap] = {
+_KP_TO_AP: dict[KpNotNone, Ap] = {
     '0': 0, '0+': 2, '1-': 3, '1': 4, '1+': 5,
     '2-': 6, '2': 7, '2+': 9, '3-': 12, '3': 15, '3+': 18,
     '4-': 22, '4': 27, '4+': 32, '5-': 39, '5': 48, '5+': 56,
@@ -24,9 +24,11 @@ _KP_TO_AP: dict[Kp, Ap] = {
     '8-': 179, '8': 207, '8+': 236, '9-': 300, '9': 400, '9+': 500,
 }
 
-_AP_TO_KP: dict[Ap, Kp] = {(v if v != 0 else 1): k for k, v in _KP_TO_AP.items()}
+_AP_TO_KP: dict[ApNotNone, KpNotNone] = {(v if v != 0 else 1): k for k, v in _KP_TO_AP.items()} # type: ignore
 
-def float_to_kp(kp: int | float | str) -> Kp:
+def float_to_kp(kp: int | float | str | None) -> Kp:
+    if kp is None:
+        return None
     kp = float(kp)
     out = str(round(kp))
     if kp > int(kp):
@@ -36,6 +38,8 @@ def float_to_kp(kp: int | float | str) -> Kp:
     return out # type: ignore
 
 def kp_to_float(kp: Kp) -> float:
+    if kp is None:
+        return -1.0
     if len(kp) == 1:
         return float(kp)
     elif kp.endswith('-'):
@@ -47,9 +51,13 @@ def kp_to_g(kp: Kp) -> RSG:
     return int(kp[0]) - 4 # type: ignore
 
 def kp_to_ap(kp: Kp) -> Ap:
+    if kp is None:
+        return None
     return _KP_TO_AP[kp]
 
 def ap_to_kp(ap: Ap) -> Kp:
+    if ap is None:
+        return None
     for k, v in _AP_TO_KP.items():
         if ap <= k:
             return v
@@ -60,7 +68,7 @@ def compare_kp(kp1: Kp, kp2: Kp, op: Operation) -> bool:
     x, y = kp_to_float(kp1), kp_to_float(kp2)
     return eval(str(x) + op + str(y))
 
-def average_kp(*kps: Kp) -> Kp:
+def average_kp(*kps: Kp) -> Kp | None:
     return float_to_kp(sum(map(kp_to_float, kps))/len(kps))
 
 def sort_kps(*args: Kp) -> tuple[Kp, ...]:
@@ -72,9 +80,13 @@ def sort_kps(*args: Kp) -> tuple[Kp, ...]:
 FLUX_LETTER_MULS = {'X': 10000, 'M': 1000, 'C': 100, 'B': 10, 'A': 1}
 
 def flux_to_float(flux: Flux) -> float:
+    if flux is None:
+        return -1
     return FLUX_LETTER_MULS[flux[0]] * float(flux[1:])
 
 def float_to_flux(flux: float) -> Flux:
+    if flux is None:
+        return -1
     for letter, mul in FLUX_LETTER_MULS.items():
         if flux >= mul or letter == 'A':
             before, after = str(float(flux)).split('.')
@@ -87,7 +99,7 @@ def compare_flux(flux1: Flux, flux2: Flux, op: Operation) -> bool:
     return eval(str(x) + op + str(y))
 
 def flux_to_r(flux: Flux) -> RSG:
-    if flux == '':
+    if flux is None:
         return 0
     letter = flux[0]
     number = float(flux[1:])
@@ -159,8 +171,18 @@ CYCLE_START_DTS = [
     datetime(2019, 12, 1),
 ]
 
-def cycle(dt) -> int:
+def cycle(dt: datetime) -> int:
     for i, start in enumerate(CYCLE_START_DTS):
         if dt < start:
             return i + 1
     return len(CYCLE_START_DTS)
+
+
+NGP_LAT = math.radians(80.84)
+NGP_LON = math.radians(-72.66)
+
+def mlat(lat: float, lon: float) -> float:
+    lat = math.radians(lat)
+    lon = math.radians(lon)
+    out = math.acos(math.sin(lat)*math.sin(NGP_LAT) + math.cos(lat)*math.cos(NGP_LAT)*math.cos(abs(lon - NGP_LON)))
+    return math.degrees(out)
