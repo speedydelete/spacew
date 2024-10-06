@@ -137,7 +137,7 @@ def format_mdd_table(data: MultiDayData, flags: int) -> str:
     out += '\x1b[0m\n'
     for day, info in data.items():
         avg_kp = util.average_kp(*info.kps)
-        out += f'{color(avg_kp, 'kp', display=False)}{day.strftime('%x'):<10} '
+        out += f'{color(avg_kp, 'kp', display=False)}{day.strftime('%Y-%m-%d'):<10} '
         if flags & EARTH:
             kps = util.sort_kps(*info.kps)
             min_kp, max_kp = kps[0], kps[-1]
@@ -205,64 +205,96 @@ def format_day_data_text(info: DayData, flags: int, include_time: bool = True) -
     return out
 
 
-def mode(arg: str) -> int:
+def parse_date_arg(arg: str) -> date | None:
+    #try:
+    return dateutil.parser.parse(arg).date() # type: ignore
+    #except ValueError:
+    #    return None
+
+def parse_mode(arg: str) -> int | None:
     try:
         return int(arg)
     except ValueError:
         if arg in MODE_FLAG_MAP:
             return MODE_FLAG_MAP[arg]
         else:
-            o_arg = str(arg)
-            arg_re = re.compile(arg)
+            arg_re = re.compile(re.escape(arg))
             for k, v in MODE_FLAG_MAP.items():
                 if arg_re.search(k):
                     return v
-            raise argparse.ArgumentTypeError(f'not a valid mode: {o_arg}') from None
+            return None
 
-def date_arg(arg: str) -> date:
-    try:
-        return dateutil.parser.parse(arg).date() # type: ignore
-    except ValueError:
-        raise argparse.ArgumentTypeError(f'not a valid date: {arg}') from None
-
-def command_or_date(arg: str) -> str | tuple[str, date]:
-    if arg in COMMANDS:
-        return arg
-    else:
-        try:
-            return ('archive', date_arg(arg))
-        except argparse.ArgumentTypeError:
-            raise argparse.ArgumentTypeError(f'not a valid command or date: {arg}') from None
-
-
-def parse(args: Sequence[str] = sys.argv) -> argparse.Namespace:
+def parse(args: Sequence[str] = sys.argv) -> argparse.Namespace | None:
     parser = argparse.ArgumentParser(
         prog='spacew',
         description='outputs space weather information for date(s)',
     )
-    parser.add_argument('command_or_date', action='store', nargs='?', type=command_or_date, default='now')
-    parser.add_argument('start_date', nargs='?', action='store', type=date_arg, \
-                        default=str(date.today()), help='the date to get data for (default is today)')
-    parser.add_argument('end_date', nargs='?', action='store', type=date_arg, help='the end date for a date range, ' + \
-                        'when provided it gives all dates between date and this')
-    parser.add_argument('mode', nargs='?', action='store', type=mode, default='default', \
-                        help='the data to output (default|sun|earth|all)')
-    parser.add_argument('-m', '--mode', action='store', dest='mode', type=mode, default='default', \
-                        help='the data to output (default|sun|earth|all)')
+    parser.add_argument('command', action='store', nargs='?', type=str, default='current', \
+                        help='the command to run (current|now|archive|history|on|bot)')
+    parser.add_argument('start_date', nargs='?', action='store', type=str, default='', \
+                        help='the date to get data for (default is today)')
+    parser.add_argument('end_date', nargs='?', action='store', type=str, default='', \
+                        help='the end date for a date range, when provided it gives all dates between date and this')
+    parser.add_argument('mode', nargs='?', action='store', type=parse_mode, default='default', \
+                        help='the data to output (default|sun|earth|all|flags)')
+    parser.add_argument('-m', '--mode', action='store', dest='mode', type=parse_mode, default='defualt', \
+                        help='the data to output (default|sun|earth|all|flags)')
     parser.add_argument('-v', '--version', action='version', version=VERSION, help='print the version')
     parser.add_argument('-j', '--json', action='store_true', help='output json')
     parser.add_argument('-n', '--nocolor', '--no-color', action='store_true', help='disable color output')
     parser.add_argument('-r', '--refresh', action='store_true', help='force data refresh instead of loading from cache')
     parser.add_argument('-c', '--cache', action='store_false', help='disable auto saving to cache')
     parser.add_argument('-a', '-p', '-ap', '--ap', action='store_true', help='whether to output ap')
-    return parser.parse_args(args)
+    out = parser.parse_args(args)
+    arg1, arg2, arg3 = out.command, out.start_date, out.end_date
+    if arg1 not in COMMANDS:
+        temp = parse_date_arg(arg1)
+        if temp is not None:
+            out.start_date = temp
+            out.command = 'archive'
+        else:
+            temp = parse_mode(arg1)
+            if temp:
+                out.mode = temp
+                out.command = 'current'
+            else:
+                parser.print_usage()
+                print(f'spacew: error: argument 1: not a command, date, or mode: {arg1!r}')
+                return None
+    if arg2 != '':
+        temp = parse_date_arg(arg2)
+        if temp is not None:
+            out.start_date = temp
+        else:
+            temp = parse_mode(arg2)
+            if temp is not None:
+                out.mode = temp
+            else:
+                parser.print_usage()
+                print(f'spacew: error: argument 2: not a date or mode: {arg2!r}')
+                return None
+    if arg3 != '':
+        temp = parse_date_arg(arg3)
+        if temp is not None:
+            out.end_date = temp
+        else:
+            temp = parse_mode(arg3)
+            if temp is not None:
+                out.end_date = out.start_date
+                out.mode = temp
+            else:
+                parser.print_usage()
+                print(f'spacew: error: argument 3: not a date or mode: {arg3!r}')
+                return None
+    else:
+        out.end_date = out.start_date
+    return out
 
-def main(argv: Sequence[str] = sys.argv, path: str = '.', secure: bool = False, discord_ansi: bool = False) -> str:
+def main(argv: Sequence[str] = sys.argv, path: str = '.', secure: bool = False, discord_ansi: bool = False) -> str | None:
     args = parse(argv)
-    cmd = args.command_or_date
-    if isinstance(cmd, tuple):
-        args.cmd, args.start_date = cmd
-        cmd = args.cmd
+    if args is None:
+        return None
+    cmd = args.command
     flags = args.mode | (AP if args.ap else 0)
     if cmd in ARCHIVE_CMDS:
         start, end = args.start_date, args.end_date
@@ -308,7 +340,9 @@ def main_sys_argv() -> None:
         argv = argv[1:]
     path = '/'.join((argv[0].split('/'))[:-1]) + '/'
     argv = argv[1:]
-    print(main(argv, path))
+    out = main(argv, path)
+    if out is not None:
+        print(out)
 
 
 if __name__ == '__main__':
